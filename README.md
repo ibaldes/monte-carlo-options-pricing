@@ -2,21 +2,21 @@ Code for Monte-Carlo pricing of options assuming the Black-Scholes model and ris
 
 ******************* Libraries Used ******************
 
-pandas
-numpy
-matplotlib 
-multiprocessing (to allow for quicker calculation over large n_simulations)
-scipy
+- pandas
+- numpy
+- matplotlib 
+- multiprocessing (to allow for quicker calculation over large n_simulations)
+- scipy
 
 *****************************************************
 ********************** SUMMARY **********************
 
 EuropeanVanilla.py contains functions for the following:
--Analytic results of Black Scholes Vanilla European options with or without Greeks (delta, gamma, vega, theta, rho).
--Monte-Carlo implementation Vanilla European options pricing with or without Greeks. These also return standard errors of the prices and greeks.
+- Analytic results of Black Scholes Vanilla European options with or without Greeks (delta, gamma, vega, theta, rho).
+- Monte-Carlo implementation Vanilla European options pricing with or without Greeks. These also return standard errors of the prices and greeks.
 
 EuropeanBarrier.py contains functions for the following:
--Monte-Carlo pricing for Knock-in/Knock-out European put and calls with Greeks. These also return standard errors of the prices and greeks.
+- Monte-Carlo pricing for Knock-in/Knock-out European put and calls with Greeks. These also return standard errors of the prices and greeks.
 
 PricingExample.py calls the functions from EuropeanVanilla.py and EuropeanBarrier.py showing some example prices.
 
