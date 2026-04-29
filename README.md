@@ -22,7 +22,9 @@ PricingExample.py calls the functions from EuropeanVanilla.py and EuropeanBarrie
 
 PricingExample.py calls the functions from EuropeanVanilla.py and EuropeanBarrier.py showing some example prices.
 
-ScalingWithNsimulations.py calls functions from EuropeanVanilla.py and shows the convergence of the Monte-Carlo calculation with the analytic result with large n_simulations.
+ScalingWithNsimulations_CallOption.py calls functions from EuropeanVanilla.py and shows the convergence of the Monte-Carlo calculation of the call option price and greeks with the analytic result for large n_simulations.
+
+ScalingWithNsimulations_PutOption.py calls functions from EuropeanVanilla.py and shows the convergence of the Monte-Carlo calculation of the put option price and greeks with the analytic result for large n_simulations.
 
 The plots folder is where the generated plots are stored.
 
