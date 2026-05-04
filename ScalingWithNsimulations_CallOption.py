@@ -10,7 +10,6 @@ import EuropeanVanilla as ev
 
 ### Compares the Monte-Carlo of the Vanilla European with the Analytic Black-Scholes Formula ####
 ### Generates a plot, showing the convergence and error estimate ################################
-### To do: perform similar exercise with the Greeks #############################################
 
 ##################################################################################
 ##################################################################################
@@ -24,8 +23,8 @@ def main():
 	print('\n')	
 	print ("Starting simulations...\n")
 
-	NSim_array = np.array([10, 20, 40, 70, 100, 200, 400, 700, 1e3, 2e3, 4e3, 7e3, 1e4, 2e4, 4e4, 7e4, 1e5, 2e5, 4e5, 7e5, 1e6, 4e6, 1e7]) ##### array of n_simulations values to scan over
 #	NSim_array = np.array([10, 20, 40, 70, 100, 200, 400, 700, 1e3, 2e3, 4e3, 7e3, 1e4, 2e4, 4e4, 7e4, 1e5, 2e5, 4e5, 7e5, 1e6, 2e6, 4e6, 7e6, 1e7]) ##### array of n_simulations values to scan over
+	NSim_array = np.array([10, 20, 40, 70, 100, 200, 400, 700, 1e3, 2e3, 4e3, 7e3, 1e4, 2e4, 4e4, 7e4, 1e5, 2e5, 4e5, 7e5, 1e6, 4e6, 1e7]) ##### array of n_simulations values to scan over
 	n_examples = len(NSim_array)
 	Output_array = np.zeros((n_examples, 12)) # Output array: BlackScholesVanillaEuropeanCallWithGreeks function has an output of length 12
 
@@ -82,8 +81,8 @@ def main():
 		CIpercentage = 90
 	elif multiplcation_factor == 1.96:
 		CIpercentage = 95
-	elif multiplcation_factor == 1.96:
-		CIpercentage = 95
+	elif multiplcation_factor == 2.58:
+		CIpercentage = 99
 	else:
 		CIpercentage = 0
 
@@ -120,7 +119,7 @@ def main():
 	plt.legend(loc='lower right')
 	plt.grid(True)
 	plt.xlim(1e1, 1e7)
-	plt.savefig("./plots/MonteCarloPriceConvergence_CallOption.jpg")
+	plt.savefig("./plots/CallOptionConvergence/MonteCarloPriceConvergence_CallOption.jpg")
 	plt.clf()
 
 	plt.figure(figsize=(8, 6))
@@ -134,7 +133,7 @@ def main():
 	plt.legend(loc='lower right')
 	plt.grid(True)
 	plt.xlim(1e1, 1e7)
-	plt.savefig("./plots/MonteCarloDeltaConvergence_CallOption.jpg")
+	plt.savefig("./plots/CallOptionConvergence/MonteCarloDeltaConvergence_CallOption.jpg")
 	plt.clf()
 
 	plt.figure(figsize=(8, 6))
@@ -148,7 +147,7 @@ def main():
 	plt.legend(loc='lower right')
 	plt.grid(True)
 	plt.xlim(1e1, 1e7)
-	plt.savefig("./plots/MonteCarloGammaConvergence_CallOption.jpg")
+	plt.savefig("./plots/CallOptionConvergence/MonteCarloGammaConvergence_CallOption.jpg")
 	plt.clf()		
 	
 	plt.figure(figsize=(8, 6))
@@ -158,11 +157,11 @@ def main():
 	plt.xscale('log') 
 	plt.title(f'Vega of Call Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
 	plt.xlabel('Number of Simulations')
-	plt.ylabel(r'Vega $( \$ \cdot \mathrm{year} )$')
+	plt.ylabel(r'Vega $( \$ \cdot \sqrt{\mathrm{year}} )$')
 	plt.legend(loc='lower right')
 	plt.grid(True)
 	plt.xlim(1e1, 1e7)
-	plt.savefig("./plots/MonteCarloVegaConvergence_CallOption.jpg")
+	plt.savefig("./plots/CallOptionConvergence/MonteCarloVegaConvergence_CallOption.jpg")
 	plt.clf()
 	
 	plt.figure(figsize=(8, 6))
@@ -176,7 +175,7 @@ def main():
 	plt.legend(loc='lower right')
 	plt.grid(True)
 	plt.xlim(1e1, 1e7)
-	plt.savefig("./plots/MonteCarloThetaConvergence_CallOption.jpg")
+	plt.savefig("./plots/CallOptionConvergence/MonteCarloThetaConvergence_CallOption.jpg")
 	plt.clf()
 
 	plt.figure(figsize=(8, 6))
@@ -190,7 +189,7 @@ def main():
 	plt.legend(loc='lower right')
 	plt.grid(True)
 	plt.xlim(1e1, 1e7)
-	plt.savefig("./plots/MonteCarloRhoConvergence_CallOption.jpg")
+	plt.savefig("./plots/CallOptionConvergence/MonteCarloRhoConvergence_CallOption.jpg")
 	plt.clf()
 
 	print('Generated plots saved in plots folder.')

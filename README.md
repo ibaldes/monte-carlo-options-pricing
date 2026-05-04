@@ -14,21 +14,23 @@ Code for Monte-Carlo pricing of options assuming the Black-Scholes model and ris
 *****************************************************
 ********************** SUMMARY **********************
 
-EuropeanVanilla.py contains functions for the following:
+* EuropeanVanilla.py contains functions for the following:
 - Analytic results of Black Scholes Vanilla European options with or without Greeks (delta, gamma, vega, theta, rho).
 - Monte-Carlo implementation Vanilla European options pricing with or without Greeks. These also return standard errors of the prices and greeks.
 
-EuropeanBarrier.py contains functions for the following:
-- Analytic pricing for Knock-in/Knock-out European puts and calls (greeks: to be added).
-- Monte-Carlo pricing for Knock-in/Knock-out European puts and calls with Greeks. These also return standard errors of the prices and greeks.
+* EuropeanBarrier.py contains functions for the following:
+- Analytic pricing for Knock-in/Knock-out European puts and calls (greeks: calculated using finite difference).
+- Monte-Carlo pricing for Knock-in/Knock-out European puts and calls with Greeks. These also return standard errors of the prices and greeks. (To do: improve estimates of the greeks using more advanced techniques)
 
-PricingExample.py calls the functions from EuropeanVanilla.py and EuropeanBarrier.py showing some example prices.
+* PricingExample.py calls the functions from EuropeanVanilla.py and EuropeanBarrier.py showing some example prices.
 
-PricingExample.py calls the functions from EuropeanVanilla.py and EuropeanBarrier.py showing some example prices.
+* ScalingWithNsimulations_CallOption.py calls functions from EuropeanVanilla.py and shows the convergence of the Monte-Carlo calculation of the VANILLA call option price and greeks with the analytic result for large n_simulations. (To do: investigate behaviour of Gamma at small values of n_simulations.)
 
-ScalingWithNsimulations_CallOption.py calls functions from EuropeanVanilla.py and shows the convergence of the Monte-Carlo calculation of the call option price and greeks with the analytic result for large n_simulations.
+* ScalingWithNsimulations_PutOption.py calls functions from EuropeanVanilla.py and shows the convergence of the Monte-Carlo calculation of the VANILLA put option price and greeks with the analytic result for large n_simulations. (To do: investigate behaviour of Gamma at small values of n_simulations.)
 
-ScalingWithNsimulations_PutOption.py calls functions from EuropeanVanilla.py and shows the convergence of the Monte-Carlo calculation of the put option price and greeks with the analytic result for large n_simulations.
+* ScalingWithNsimulations_CallOption_Barrier.py calls functions from EuropeanBarrier.py and shows the convergence of the Monte-Carlo calculation of the BARRIER call option price and greeks with the analytic result for large n_simulations. (Note estimates of the Greeks are still to be improved).
+
+* ScalingWithNsimulations_PutOption_Barrier.py calls functions from EuropeanBarrier.py and shows the convergence of the Monte-Carlo calculation of the BARRIER put option price and greeks with the analytic result for large n_simulations. (Note estimates of the Greeks are still to be improved).
 
 The plots folder is where the generated plots are stored.
 
