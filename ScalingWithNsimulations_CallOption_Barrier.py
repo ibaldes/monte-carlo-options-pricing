@@ -6,11 +6,10 @@ from scipy import stats
 from scipy.stats import norm
 from multiprocessing import Pool
 
-import EuropeanVanilla as ev
+import EuropeanBarrier as eb
 
-### Compares the Monte-Carlo of the Vanilla European with the Analytic Black-Scholes Formula ####
+### Compares the Monte-Carlo of the Barrier Call Option with the Analytic Formula ####
 ### Generates a plot, showing the convergence and error estimate ################################
-
 
 ##################################################################################
 ##################################################################################
@@ -24,10 +23,10 @@ def main():
 	print('\n')	
 	print ("Starting simulations...\n")
 
-#	NSim_array = np.array([10, 20, 40, 70, 100, 200, 400, 700, 1e3, 2e3, 4e3, 7e3, 1e4, 2e4, 4e4, 7e4, 1e5, 2e5, 4e5, 7e5, 1e6, 2e6, 4e6, 7e6, 1e7]) ##### array of n_simulations values to scan over
-	NSim_array = np.array([10, 20, 40, 70, 100, 200, 400, 700, 1e3, 2e3, 4e3, 7e3, 1e4, 2e4, 4e4, 7e4, 1e5, 2e5, 4e5, 7e5, 1e6, 4e6, 1e7]) ##### array of n_simulations values to scan over
+#	NSim_array = np.array([10, 20, 40, 70, 100, 200, 400, 700, 1e3, 2e3, 4e3, 7e3, 1e4, 2e4, 4e4, 7e4, 1e5, 2e5, 4e5, 7e5, 1e6, 4e6, 7e6]) ##### array of n_simulations values to scan over#
+	NSim_array = np.array([10, 20, 40, 70, 100, 200, 400, 700, 1e3, 2e3, 4e3, 7e3, 1e4, 2e4, 4e4, 7e4, 1e5, 2e5, 4e5, 7e5, 1e6, 5e6])
 	n_examples = len(NSim_array)
-	Output_array = np.zeros((n_examples, 12)) # Output array: BlackScholesVanillaEuropeanPutWithGreeks function has an output of length 12
+	Output_array = np.zeros((n_examples, 12)) # Output array: MonteCarloKnockInEuropeanCallWithGreeks function has an output of length 12
 
 	### Choose some example values for our Option
 	Stockprice = 80
@@ -35,17 +34,18 @@ def main():
 	interest = 0.05
 	volatility = 0.4
 	timenow = 0
-	timeatmaturity = 0.25 
+	timeatmaturity = 0.25
+	KnockInBarrier = 100 
 
 	### Generate the Monte-Carlo prices and Greeks. Note we can increase n_steps to get a better theta estimate (current implementation using plus/minus one step to calculate derivative).
 
 	for i in range(0,n_examples):
 		print(f'Starting example with {NSim_array[i]} simulations\n')
-		Output_array[i, :] = ev.MonteCarloVanillaEuropeanPutWithGreeks(Stockprice, Strikeprice, interest, volatility, timenow, timeatmaturity, n_steps=100, n_simulations=NSim_array[i])
+		Output_array[i, :] = eb.MonteCarloKnockInEuropeanCallWithGreeks(Stockprice, Strikeprice, interest, volatility, timenow, timeatmaturity, KnockInBarrier, n_steps=100, n_simulations=NSim_array[i])
 
 	print('Prices and Greeks using Monte-Carlo for the different n_simulations are:\n', Output_array)
 
-	Analytic_array = np.array(ev.BlackScholesVanillaEuropeanPutWithGreeks(Stockprice, Strikeprice, interest, volatility, timenow, timeatmaturity))
+	Analytic_array = np.array(eb.AnalyticBlackScholesKnockInCallWithGreeks(Stockprice, Strikeprice, interest, volatility, timenow, timeatmaturity, KnockInBarrier))
 	print('\nPrices and Greeks using the analytic formula are:\n', Analytic_array)
 
 
@@ -114,13 +114,13 @@ def main():
 	plt.fill_between(NSim_array, MonteCarloPrice_array_lower, MonteCarloPrice_array_upper, alpha=0.3, label=f'Naive {CIpercentage}% CI')
 	plt.axhline(y=AnalyticPrice, color='r', linestyle='--', label='Analytic Price')
 	plt.xscale('log') 
-	plt.title(f'Price of Put Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
+	plt.title(f'Price of Knock-In Call Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity}, H={KnockInBarrier})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel('Price ($)')
 	plt.legend(loc='lower right')
 	plt.grid(True)
 	plt.xlim(1e1, 1e7)
-	plt.savefig("./plots/PutOptionConvergence/MonteCarloPriceConvergence_PutOption.jpg")
+	plt.savefig("./plots/BarrierCallOptionConvergence/MonteCarloPriceConvergence_BarrierCallOption.jpg")
 	plt.clf()
 
 	plt.figure(figsize=(8, 6))
@@ -128,13 +128,13 @@ def main():
 	plt.fill_between(NSim_array, MonteCarloDelta_array_lower, MonteCarloDelta_array_upper, alpha=0.3, label=f'Naive {CIpercentage}% CI')
 	plt.axhline(y=AnalyticDelta, color='r', linestyle='--', label=r'Analytic $\Delta$')
 	plt.xscale('log') 
-	plt.title(f'Delta of Put Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
+	plt.title(f'Delta of Knock-In Call Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity}, H={KnockInBarrier})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel(r'$\Delta$')
 	plt.legend(loc='lower right')
 	plt.grid(True)
 	plt.xlim(1e1, 1e7)
-	plt.savefig("./plots/PutOptionConvergence/MonteCarloDeltaConvergence_PutOption.jpg")
+	plt.savefig("./plots/BarrierCallOptionConvergence/MonteCarloDeltaConvergence_BarrierCallOption.jpg")
 	plt.clf()
 
 	plt.figure(figsize=(8, 6))
@@ -142,13 +142,13 @@ def main():
 	plt.fill_between(NSim_array, MonteCarloGamma_array_lower, MonteCarloGamma_array_upper, alpha=0.3, label=f'Naive {CIpercentage}% CI')
 	plt.axhline(y=AnalyticGamma, color='r', linestyle='--', label=r'Analytic $\Gamma$')
 	plt.xscale('log') 
-	plt.title(f'Gamma of Put Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
+	plt.title(f'Gamma of Knock-In Call Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity}, H={KnockInBarrier})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel(r'$\Gamma$ $(\$)^{-1}$')
 	plt.legend(loc='lower right')
 	plt.grid(True)
 	plt.xlim(1e1, 1e7)
-	plt.savefig("./plots/PutOptionConvergence/MonteCarloGammaConvergence_PutOption.jpg")
+	plt.savefig("./plots/BarrierCallOptionConvergence/MonteCarloGammaConvergence_BarrierCallOption.jpg")
 	plt.clf()		
 	
 	plt.figure(figsize=(8, 6))
@@ -156,13 +156,13 @@ def main():
 	plt.fill_between(NSim_array, MonteCarloVega_array_lower, MonteCarloVega_array_upper, alpha=0.3, label=f'Naive {CIpercentage}% CI')
 	plt.axhline(y=AnalyticVega, color='r', linestyle='--', label=r'Analytic Vega')
 	plt.xscale('log') 
-	plt.title(f'Vega of Put Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
+	plt.title(f'Vega of Call Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity}, H={KnockInBarrier})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel(r'Vega $( \$ \cdot \sqrt{\mathrm{year}} )$')
 	plt.legend(loc='lower right')
 	plt.grid(True)
 	plt.xlim(1e1, 1e7)
-	plt.savefig("./plots/PutOptionConvergence/MonteCarloVegaConvergence_PutOption.jpg")
+	plt.savefig("./plots/BarrierCallOptionConvergence/MonteCarloVegaConvergence_BarrierCallOption.jpg")
 	plt.clf()
 	
 	plt.figure(figsize=(8, 6))
@@ -170,13 +170,13 @@ def main():
 	plt.fill_between(NSim_array, MonteCarloTheta_array_lower, MonteCarloTheta_array_upper, alpha=0.3, label=f'Naive {CIpercentage}% CI')
 	plt.axhline(y=AnalyticTheta, color='r', linestyle='--', label=r'Analytic $\Theta$')
 	plt.xscale('log') 
-	plt.title(f'Theta of Put Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
+	plt.title(f'Theta of Knock-In Call Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity}, H={KnockInBarrier})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel(r'$\Theta$ $( \$ / \mathrm{year} )$')
 	plt.legend(loc='lower right')
 	plt.grid(True)
 	plt.xlim(1e1, 1e7)
-	plt.savefig("./plots/PutOptionConvergence/MonteCarloThetaConvergence_PutOption.jpg")
+	plt.savefig("./plots/BarrierCallOptionConvergence/MonteCarloThetaConvergence_BarrierCallOption.jpg")
 	plt.clf()
 
 	plt.figure(figsize=(8, 6))
@@ -184,13 +184,13 @@ def main():
 	plt.fill_between(NSim_array, MonteCarloRho_array_lower, MonteCarloRho_array_upper, alpha=0.3, label=f'Naive {CIpercentage}% CI')
 	plt.axhline(y=AnalyticRho, color='r', linestyle='--', label=r'Analytic $\rho$')
 	plt.xscale('log') 
-	plt.title(f'Rho of Put Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
+	plt.title(f'Rho of Knock-In Call Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity}, H={KnockInBarrier})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel(r'$\rho$ $( \$ \cdot \mathrm{year} )$')
 	plt.legend(loc='lower right')
 	plt.grid(True)
 	plt.xlim(1e1, 1e7)
-	plt.savefig("./plots/PutOptionConvergence/MonteCarloRhoConvergence_PutOption.jpg")
+	plt.savefig("./plots/BarrierCallOptionConvergence/MonteCarloRhoConvergence_BarrierCallOption.jpg")
 	plt.clf()
 
 	print('Generated plots saved in plots folder.')
