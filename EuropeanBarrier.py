@@ -9,7 +9,7 @@ from multiprocessing import Pool
 ###
 
 '''
-GIVES MONTE-CARLO IMPLEMENTATION OF EUROPEAN OPTIONS WITH BARRIERS
+GIVES ANALYTIC AND MONTE-CARLO IMPLEMENTATION OF EUROPEAN OPTIONS WITH BARRIERS
 ReTURNS THE OPTION PRICE, GREEKS, AND STANDARD ERRORS
 '''
 
@@ -19,6 +19,267 @@ if __name__ == '__main__':
 	print("Number of cpus : ", mp.cpu_count())
 	pool = Pool(processes=(mp.cpu_count() - 1))
 
+
+#######################
+
+def AnalyticBlackScholesKnockInCall(S,K,r,sigma,t,T,KnockInBarrier):
+	
+	'''
+	Calculates the Black Scholes Knock In Call price using the analytic formula
+	Also returns the Greeks: Delta, Gamma, Vega, Theta, Rho using the analytic formulas
+
+	S is the stock price at time t
+	K is the strike price
+	r is the risk-free interest rate
+	sigma is the volatility
+	t is the time the option price is evaluated
+	T is the expiration time in years
+	KnockInBarrier is the Barrier (constant in time)
+	
+	Output is the call price in dollars
+	
+	'''
+	#################################################################
+	#################################################################
+	
+	
+	if S > KnockInBarrier:	### price of down and in call (See Hull Chapter 26)
+		
+		####################################################
+		if KnockInBarrier <= K: 
+			lambdafactor = (r + 0.5*sigma**2) / (sigma**2)
+			yfactor = np.log( KnockInBarrier**2 / (S*K) )/(sigma*np.sqrt(T-t)) + lambdafactor*sigma*np.sqrt(T-t)
+			PriceDownIn = S*( KnockInBarrier/ S )**(2*lambdafactor)*norm.cdf(yfactor) - K*np.exp(-r*(T-t))*( KnockInBarrier/ S )**(2*lambdafactor-2)*norm.cdf(yfactor-sigma*np.sqrt(T-t))
+		else:
+			lambdafactor = (r + 0.5*sigma**2) / (sigma**2)
+			x1factor = np.log( S/KnockInBarrier ) / (sigma * np.sqrt(T-t) ) + lambdafactor*sigma*np.sqrt(T-t)
+			y1factor = np.log( KnockInBarrier/S ) / (sigma * np.sqrt(T-t) ) + lambdafactor*sigma*np.sqrt(T-t)
+			PriceDownIn = S*norm.cdf(x1factor) - K*np.exp(-r*(T-t))*norm.cdf(x1factor-sigma*np.sqrt(T-t)) - S*( KnockInBarrier/s )**(2*lambdafactor)*norm.cdf(y1factor)+K*np.exp(-r*(T-t))*( KnockInBarrier/ S )**(2*lambdafactor-2)*norm.cdf(y1factor-sigma*np.sqrt(T-t))
+		####################################################
+		
+		CallPrice = PriceDownIn
+		
+	############################################################	
+	############################################################
+	
+	else: 	### price of up and in call  (See Hull Chapter 26)
+
+		###########################################
+		if KnockInBarrier <= K:
+			##### Standard Vanilla Call in this Case ######
+			d1 = ( np.log(S/K)+(r+1/2*sigma**2)*(T-t) ) / ( sigma*np.sqrt( T - t ) )
+			d2 = ( np.log(S/K)+(r-1/2*sigma**2)*(T-t) ) / ( sigma*np.sqrt( T - t ) )
+			PriceUpIn = S*norm.cdf(d1) - K*np.exp(-r*(T-t))*norm.cdf(d2)
+		else:
+			lambdafactor = (r + 0.5*sigma**2) / (sigma**2)
+			yfactor = np.log( KnockInBarrier**2 / (S*K) )/(sigma*np.sqrt(T-t)) + lambdafactor*sigma*np.sqrt(T-t)
+			y1factor = np.log( KnockInBarrier/S ) / (sigma * np.sqrt(T-t) ) + lambdafactor*sigma*np.sqrt(T-t)
+			x1factor = np.log( S/KnockInBarrier ) / (sigma * np.sqrt(T-t) ) + lambdafactor*sigma*np.sqrt(T-t)
+			PriceUpIn = S*norm.cdf(x1factor) - K*np.exp(-r*(T-t))*norm.cdf(x1factor-sigma*np.sqrt(T-t)) - S*( KnockInBarrier/S )**(2*lambdafactor)*(norm.cdf(-yfactor)-norm.cdf(-y1factor))+K*np.exp(-r*(T-t))*( KnockInBarrier/ S )**(2*lambdafactor-2)*(norm.cdf(-yfactor+sigma*np.sqrt(T-t))-norm.cdf(-y1factor+sigma*np.sqrt(T-t)))	
+	####################################################
+		
+		CallPrice = PriceUpIn
+	
+	##########################################################
+	##########################################################		
+	
+	return(CallPrice)
+	
+#######################
+
+def AnalyticBlackScholesKnockOutCall(S,K,r,sigma,t,T,KnockInBarrier):
+	
+	'''
+	Calculates the Black Scholes Knock Out Call price using the analytic formula
+	Also returns the Greeks: Delta, Gamma, Vega, Theta, Rho using the analytic formulas
+
+	S is the stock price at time t
+	K is the strike price
+	r is the risk-free interest rate
+	sigma is the volatility
+	t is the time the option price is evaluated
+	T is the expiration time in years
+	KnockInBarrier is the Barrier (constant in time)
+	
+	Output is the call price in dollars
+	
+	'''
+	#################################################################
+	#################################################################
+	
+	#### Vanilla Call Price	
+	d1 = ( np.log(S/K)+(r+1/2*sigma**2)*(T-t) ) / ( sigma*np.sqrt( T - t ) )
+	d2 = ( np.log(S/K)+(r-1/2*sigma**2)*(T-t) ) / ( sigma*np.sqrt( T - t ) )
+	VanillaCallPrice = S*norm.cdf(d1) - K*np.exp(-r*(T-t))*norm.cdf(d2) 
+	
+	
+	#### Knock In Call Price
+	KnockInCallPrice = AnalyticBlackScholesKnockInCall(S,K,r,sigma,t,T,KnockInBarrier)		
+
+	##### Knock Out Call Price
+	
+	KnockOutCallPrice = VanillaCallPrice - KnockInCallPrice
+ 		
+	return(KnockOutCallPrice)
+
+#######################
+
+def AnalyticBlackScholesKnockInPut(S,K,r,sigma,t,T,KnockInBarrier):
+	
+	'''
+	Calculates the Black Scholes Knock In Put price using the analytic formula
+	Also returns the Greeks: Delta, Gamma, Vega, Theta, Rho using the analytic formulas
+
+	S is the stock price at time t
+	K is the strike price
+	r is the risk-free interest rate
+	sigma is the volatility
+	t is the time the option price is evaluated
+	T is the expiration time in years
+	KnockInBarrier is the Barrier (constant in time)
+	
+	Output is the call price in dollars
+	
+	'''
+	#################################################################
+	#################################################################
+	
+	
+	if S > KnockInBarrier:	### price of down and in put 
+		
+		####################################################
+		if KnockInBarrier <= K: 
+		
+			lambdafactor = (r + 0.5*sigma**2) / (sigma**2)
+			yfactor = np.log( KnockInBarrier**2 / (S*K) )/(sigma*np.sqrt(T-t)) + lambdafactor*sigma*np.sqrt(T-t)
+			y1factor = np.log( KnockInBarrier/S ) / (sigma * np.sqrt(T-t) ) + lambdafactor*sigma*np.sqrt(T-t)				
+			x1factor = np.log( S/KnockInBarrier ) / (sigma * np.sqrt(T-t) ) + lambdafactor*sigma*np.sqrt(T-t)
+#			x2factor = np.log( S/K ) / (sigma * np.sqrt(T-t) ) + lambdafactor*sigma*np.sqrt(T-t)
+			
+			PriceDownIn = -S*norm.cdf(-x1factor) + K*np.exp(-r*(T-t))*norm.cdf(-x1factor+sigma*np.sqrt(T-t)) + S*( KnockInBarrier/S )**(2*lambdafactor)*(norm.cdf(yfactor)-norm.cdf(y1factor))-K*np.exp(-r*(T-t))*(KnockInBarrier/S)**(2*lambdafactor-2)*(norm.cdf(yfactor-sigma*np.sqrt(T-t))-norm.cdf(y1factor-sigma*np.sqrt(T-t)))
+								
+		else: #### should be vanilla put price 
+		
+			d1 = ( np.log(S/K)+(r+1/2*sigma**2)*(T-t) ) / ( sigma*np.sqrt( T - t ) )
+			d2 = ( np.log(S/K)+(r-1/2*sigma**2)*(T-t) ) / ( sigma*np.sqrt( T - t ) )
+			PriceDownIn = K*np.exp(-r*(T-t))*norm.cdf(-d2) - S*norm.cdf(-d1) 
+		
+		####################################################
+		
+		PutPrice = PriceDownIn
+		
+	############################################################	
+	############################################################
+	
+	else: 	### price of up and in put 
+
+		###########################################
+		if KnockInBarrier <= K:
+			lambdafactor = (r + 0.5*sigma**2) / (sigma**2)
+			yfactor = np.log( KnockInBarrier**2 / (S*K) )/(sigma*np.sqrt(T-t)) + lambdafactor*sigma*np.sqrt(T-t)
+			y1factor = np.log( KnockInBarrier/S ) / (sigma * np.sqrt(T-t) ) + lambdafactor*sigma*np.sqrt(T-t)				
+			x1factor = np.log( S/KnockInBarrier ) / (sigma * np.sqrt(T-t) ) + lambdafactor*sigma*np.sqrt(T-t)
+			
+			PriceUpOut = -S*norm.cdf(-x1factor) + K*norm.cdf(-x1factor+sigma*np.sqrt(T-t)) + S*(KnockInBarrier/S)**(2*lambdafactor)*norm.cdf(-y1factor)-K*np.exp(-r*(T-t))*(KnockInBarrier/S)**(2*lambdafactor-2)*norm.cdf(-y1factor+sigma*np.sqrt(T-t))
+			
+			d1 = ( np.log(S/K)+(r+1/2*sigma**2)*(T-t) ) / ( sigma*np.sqrt( T - t ) )
+			d2 = ( np.log(S/K)+(r-1/2*sigma**2)*(T-t) ) / ( sigma*np.sqrt( T - t ) )
+			VanillaPutprice = K*np.exp(-r*(T-t))*norm.cdf(-d2) - S*norm.cdf(-d1) 		
+			
+			PriceUpIn = VanillaPutprice - PriceUpOut
+			
+		else: #### Hull Formula
+			lambdafactor = (r + 0.5*sigma**2) / (sigma**2)
+			yfactor = np.log( KnockInBarrier**2 / (S*K) )/(sigma*np.sqrt(T-t)) + lambdafactor*sigma*np.sqrt(T-t)
+			PriceUpIn = -S*( KnockInBarrier/S )**(2*lambdafactor)*norm.cdf(-yfactor) + K*np.exp(-r*(T-t))*( KnockInBarrier/S )**(2*lambdafactor-2)*norm.cdf(-yfactor + sigma*np.sqrt(T-t))
+		
+	####################################################
+		
+		PutPrice = PriceUpIn
+	
+	##########################################################
+	##########################################################		
+	
+	return(PutPrice)
+	
+def AnalyticBlackScholesKnockOutPut(S,K,r,sigma,t,T,KnockInBarrier):
+	
+	'''
+	Calculates the Black Scholes Knock In Put price using the analytic formula
+	Also returns the Greeks: Delta, Gamma, Vega, Theta, Rho using the analytic formulas
+
+	S is the stock price at time t
+	K is the strike price
+	r is the risk-free interest rate
+	sigma is the volatility
+	t is the time the option price is evaluated
+	T is the expiration time in years
+	KnockInBarrier is the Barrier (constant in time)
+	
+	Output is the call price in dollars
+	
+	'''
+	#################################################################
+	#################################################################
+	
+	
+	if S > KnockInBarrier:	### price of down and out put 
+		
+		####################################################
+		if KnockInBarrier <= K: #### Hull
+			
+			lambdafactor = (r + 0.5*sigma**2) / (sigma**2)
+			yfactor = np.log( KnockInBarrier**2 / (S*K) )/(sigma*np.sqrt(T-t)) + lambdafactor*sigma*np.sqrt(T-t)
+			y1factor = np.log( KnockInBarrier/S ) / (sigma * np.sqrt(T-t) ) + lambdafactor*sigma*np.sqrt(T-t)				
+			x1factor = np.log( S/KnockInBarrier ) / (sigma * np.sqrt(T-t) ) + lambdafactor*sigma*np.sqrt(T-t)
+#			x2factor = np.log( S/K ) / (sigma * np.sqrt(T-t) ) + lambdafactor*sigma*np.sqrt(T-t)
+			
+			PriceDownIn = -S*norm.cdf(-x1factor) + K*np.exp(-r*(T-t))*norm.cdf(-x1factor+sigma*np.sqrt(T-t)) + S*( KnockInBarrier/S )**(2*lambdafactor)*(norm.cdf(yfactor)-norm.cdf(y1factor))-K*np.exp(-r*(T-t))*(KnockInBarrier/S)**(2*lambdafactor-2)*(norm.cdf(yfactor-sigma*np.sqrt(T-t))-norm.cdf(y1factor-sigma*np.sqrt(T-t)))
+			
+			d1 = ( np.log(S/K)+(r+1/2*sigma**2)*(T-t) ) / ( sigma*np.sqrt( T - t ) )
+			d2 = ( np.log(S/K)+(r-1/2*sigma**2)*(T-t) ) / ( sigma*np.sqrt( T - t ) )
+			VanillaPutPrice = K*np.exp(-r*(T-t))*norm.cdf(-d2) - S*norm.cdf(-d1) 
+			
+			PriceDownOut = VanillaPutPrice - PriceDownIn
+		else:
+			PriceDownOut = 0 
+
+		####################################################
+		
+		PutPrice = PriceDownOut
+		
+	############################################################	
+	############################################################
+	
+	else: 	### price of up and out put 
+
+		###########################################
+		if KnockInBarrier <= K:
+			lambdafactor = (r + 0.5*sigma**2) / (sigma**2)
+			yfactor = np.log( KnockInBarrier**2 / (S*K) )/(sigma*np.sqrt(T-t)) + lambdafactor*sigma*np.sqrt(T-t)
+			y1factor = np.log( KnockInBarrier/S ) / (sigma * np.sqrt(T-t) ) + lambdafactor*sigma*np.sqrt(T-t)				
+			x1factor = np.log( S/KnockInBarrier ) / (sigma * np.sqrt(T-t) ) + lambdafactor*sigma*np.sqrt(T-t)
+			
+			PriceUpOut = -S*norm.cdf(-x1factor) + K*norm.cdf(-x1factor+sigma*np.sqrt(T-t)) + S*(KnockInBarrier/S)**(2*lambdafactor)*norm.cdf(-y1factor)-K*np.exp(-r*(T-t))*(KnockInBarrier/S)**(2*lambdafactor-2)*norm.cdf(-y1factor+sigma*np.sqrt(T-t))
+			
+		else: ##### Using Hull
+			lambdafactor = (r + 0.5*sigma**2) / (sigma**2)
+			yfactor = np.log( KnockInBarrier**2 / (S*K) )/(sigma*np.sqrt(T-t)) + lambdafactor*sigma*np.sqrt(T-t)
+			PriceUpIn = -S*( KnockInBarrier/S )**(2*lambdafactor)*norm.cdf(-yfactor) + K*np.exp(-r*(T-t))*( KnockInBarrier/S )**(2*lambdafactor-2)*norm.cdf(-yfactor + sigma*np.sqrt(T-t))
+			
+			d1 = ( np.log(S/K)+(r+1/2*sigma**2)*(T-t) ) / ( sigma*np.sqrt( T - t ) )
+			d2 = ( np.log(S/K)+(r-1/2*sigma**2)*(T-t) ) / ( sigma*np.sqrt( T - t ) )
+			VanillaPutPrice = K*np.exp(-r*(T-t))*norm.cdf(-d2) - S*norm.cdf(-d1) 
+			
+			PriceUpOut =  VanillaPutPrice - PriceUpIn
+	####################################################
+		
+		PutPrice = PriceUpOut
+	
+	##########################################################
+	##########################################################		
+	
+	return(PutPrice)
 
 #######################
 
@@ -202,6 +463,17 @@ def MonteCarloKnockInEuropeanCallWithGreeks(S, K, r, sigma, t, T, KnockInBarrier
 	### force n_steps and n_simulations to integer values ####
 	n_steps = int(n_steps)
 	n_simulations = int(n_simulations)
+	
+	### Barrier Correction Factor - See Hull Chapter 26 ###
+	time_step = (T-t)/n_steps
+	
+	if S <= KnockInBarrier: 
+		CorrectionFactor = np.exp(-0.5826*sigma*np.sqrt(time_step))	#### up and in
+	else: 
+		CorrectionFactor = np.exp(0.5826*sigma*np.sqrt(time_step))	##### down and in
+	
+	KnockInBarrier = CorrectionFactor*KnockInBarrier
+	###
 	
 	#### calculate the terminal prices and store them as a list ####
 	#### use multiple processors to speed up the simulations #######
@@ -387,6 +659,17 @@ def MonteCarloKnockOutEuropeanCallWithGreeks(S, K, r, sigma, t, T, KnockOutBarri
 	n_steps = int(n_steps)
 	n_simulations = int(n_simulations)
 	
+	### Barrier Correction Factor - See Hull Chapter 26 ###
+	time_step = (T-t)/n_steps
+	
+	if S <= KnockOutBarrier: 
+		CorrectionFactor = np.exp(-0.5826*sigma*np.sqrt(time_step))	#### up and out
+	else: 
+		CorrectionFactor = np.exp(0.5826*sigma*np.sqrt(time_step))	##### down and out
+	
+	KnockOutBarrier = CorrectionFactor*KnockOutBarrier
+	###
+	
 	#### calculate the terminal prices and store them as a list ####
 	#### use multiple processors to speed up the simulations #######
 	seed_number_array = np.arange(n_simulations) + BaseSeed
@@ -569,6 +852,17 @@ def MonteCarloKnockInEuropeanPutWithGreeks(S, K, r, sigma, t, T, KnockInBarrier,
 	### force n_steps and n_simulations to integer values ####
 	n_steps = int(n_steps)
 	n_simulations = int(n_simulations)
+
+	### Barrier Correction Factor - See Hull Chapter 26 ###
+	time_step = (T-t)/n_steps
+	
+	if S <= KnockInBarrier: 
+		CorrectionFactor = np.exp(-0.5826*sigma*np.sqrt(time_step))	#### up and in
+	else: 
+		CorrectionFactor = np.exp(0.5826*sigma*np.sqrt(time_step))	##### down and in
+	
+	KnockInBarrier = CorrectionFactor*KnockInBarrier
+	###
 	
 	#### calculate the terminal prices and store them as a list ####
 	#### use multiple processors to speed up the simulations #######
@@ -753,6 +1047,17 @@ def MonteCarloKnockOutEuropeanPutWithGreeks(S, K, r, sigma, t, T, KnockOutBarrie
 	n_steps = int(n_steps)
 	n_simulations = int(n_simulations)
 	
+	### Barrier Correction Factor - See Hull Chapter 26 ###
+	time_step = (T-t)/n_steps
+	
+	if S <= KnockOutBarrier: 
+		CorrectionFactor = np.exp(-0.5826*sigma*np.sqrt(time_step))	#### up and in
+	else: 
+		CorrectionFactor = np.exp(0.5826*sigma*np.sqrt(time_step))	##### down and in
+	
+	KnockOutBarrier = CorrectionFactor*KnockOutBarrier
+	###
+	
 	#### calculate the terminal prices and store them as a list ####
 	#### use multiple processors to speed up the simulations #######
 	seed_number_array = np.arange(n_simulations) + BaseSeed
@@ -906,28 +1211,61 @@ def MonteCarloKnockOutEuropeanPutWithGreeks(S, K, r, sigma, t, T, KnockOutBarrie
 
 def main():
 	print('\n')
-
+	
 	print('Call Option Prices with S=80, K=85, r=0.05, sigma=0.4, t=1, T=1.25')
+	
+	print('\nEuropean Call Analytic with Knock In at S=0.01\n', AnalyticBlackScholesKnockInCall(80, 85, 0.05, 0.4, 1, 1.25, 0.01))
 	print('\nEuropean Call Monte-Carlo with Knock In at S=0\n', MonteCarloKnockInEuropeanCallWithGreeks(80, 85, 0.05, 0.4, 1, 1.25, 0))
+	
+	print('\nEuropean Call Analytic with Knock In at S=85\n', AnalyticBlackScholesKnockInCall(80, 85, 0.05, 0.4, 1, 1.25, 85))
 	print('\nEuropean Call Monte-Carlo with Knock In at S=85\n', MonteCarloKnockInEuropeanCallWithGreeks(80, 85, 0.05, 0.4, 1, 1.25, 85))
+
+	print('\nEuropean Call Analytic with Knock Out at S=85\n', AnalyticBlackScholesKnockOutCall(80, 85, 0.05, 0.4, 1, 1.25, 85))
 	print('\nEuropean Call Monte-Carlo with Knock Out at S=85\n', MonteCarloKnockOutEuropeanCallWithGreeks(80, 85, 0.05, 0.4, 1, 1.25, 85))
+	
+	print('\nEuropean Call Analytic with Knock Out at S=1000\n', AnalyticBlackScholesKnockOutCall(80, 85, 0.05, 0.4, 1, 1.25, 1000))
 	print('\nEuropean Call Monte-Carlo with Knock Out at S=1000\n', MonteCarloKnockOutEuropeanCallWithGreeks(80, 85, 0.05, 0.4, 1, 1.25, 1000))
+
+	print('\nEuropean Call Analytic with Knock In at S=75\n', AnalyticBlackScholesKnockInCall(80, 85, 0.05, 0.4, 1, 1.25, 75))
 	print('\nEuropean Call Monte-Carlo with Knock In at S=75\n', MonteCarloKnockInEuropeanCallWithGreeks(80, 85, 0.05, 0.4, 1, 1.25, 75))
+
+	print('\nEuropean Call Analytic with Knock Out at S=75\n', AnalyticBlackScholesKnockOutCall(80, 85, 0.05, 0.4, 1, 1.25, 75))
 	print('\nEuropean Call Monte-Carlo with Knock Out at S=75\n', MonteCarloKnockOutEuropeanCallWithGreeks(80, 85, 0.05, 0.4, 1, 1.25, 75))
+
+	print('\nEuropean Call Analytic with Knock In at S=110\n', AnalyticBlackScholesKnockInCall(80, 85, 0.05, 0.4, 1, 1.25, 110))
 	print('\nEuropean Call Monte-Carlo with Knock In at S=110\n', MonteCarloKnockInEuropeanCallWithGreeks(80, 85, 0.05, 0.4, 1, 1.25, 110))
+
+	print('\nEuropean Call Analytic with Knock Out at S=110\n', AnalyticBlackScholesKnockOutCall(80, 85, 0.05, 0.4, 1, 1.25, 110))
 	print('\nEuropean Call Monte-Carlo with Knock Out at S=110\n', MonteCarloKnockOutEuropeanCallWithGreeks(80, 85, 0.05, 0.4, 1, 1.25, 110))
 
 	print('\n')
-
+	
 	print('Put Option Prices with S=80, K=85, r=0.05, sigma=0.4, t=1, T=1.25')
 
+	print('\nEuropean Put Analytic with Knock In at S=0.01\n', AnalyticBlackScholesKnockInPut(80, 85, 0.05, 0.4, 1, 1.25, 0.01))	
 	print('\nEuropean Put Monte-Carlo with Knock In at S=0\n', MonteCarloKnockInEuropeanPutWithGreeks(80, 85, 0.05, 0.4, 1, 1.25, 0))
+	
+	
+	print('\nEuropean Put Analytic with Knock In at S=85\n', AnalyticBlackScholesKnockInPut(80, 85, 0.05, 0.4, 1, 1.25, 85))		
 	print('\nEuropean Put Monte-Carlo with Knock In at S=85\n', MonteCarloKnockInEuropeanPutWithGreeks(80, 85, 0.05, 0.4, 1, 1.25, 85))
+	
+
+	print('\nEuropean Put Analytic with Knock Out at S=85\n', AnalyticBlackScholesKnockOutPut(80, 85, 0.05, 0.4, 1, 1.25, 85))		
 	print('\nEuropean Put Monte-Carlo with Knock Out at S=85\n', MonteCarloKnockOutEuropeanPutWithGreeks(80, 85, 0.05, 0.4, 1, 1.25, 85))
+	
+	print('\nEuropean Put Analytic with Knock Out at S=1000\n', AnalyticBlackScholesKnockOutPut(80, 85, 0.05, 0.4, 1, 1.25, 1000))		
 	print('\nEuropean Put Monte-Carlo with Knock Out at S=1000\n', MonteCarloKnockOutEuropeanPutWithGreeks(80, 85, 0.05, 0.4, 1, 1.25, 1000))
+	
+	print('\nEuropean Put Analytic with Knock In at S=75\n', AnalyticBlackScholesKnockInPut(80, 85, 0.05, 0.4, 1, 1.25, 75))			
 	print('\nEuropean Put Monte-Carlo with Knock In at S=75\n', MonteCarloKnockInEuropeanPutWithGreeks(80, 85, 0.05, 0.4, 1, 1.25, 75))
+	
+	print('\nEuropean Put Analytic with Knock Out at S=75\n', AnalyticBlackScholesKnockOutPut(80, 85, 0.05, 0.4, 1, 1.25, 75))			
 	print('\nEuropean Put Monte-Carlo with Knock Out at S=75\n', MonteCarloKnockOutEuropeanPutWithGreeks(80, 85, 0.05, 0.4, 1, 1.25, 75))
+	
+	print('\nEuropean Put Analytic with Knock In at S=110\n', AnalyticBlackScholesKnockInPut(80, 85, 0.05, 0.4, 1, 1.25, 110))				
 	print('\nEuropean Put Monte-Carlo with Knock In at S=110\n', MonteCarloKnockInEuropeanPutWithGreeks(80, 85, 0.05, 0.4, 1, 1.25, 110))
+	
+	print('\nEuropean Put Analytic with Knock Out at S=110\n', AnalyticBlackScholesKnockOutPut(80, 85, 0.05, 0.4, 1, 1.25, 110))				
 	print('\nEuropean Put Monte-Carlo with Knock Out at S=110\n', MonteCarloKnockOutEuropeanPutWithGreeks(80, 85, 0.05, 0.4, 1, 1.25, 110))
 
 

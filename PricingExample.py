@@ -29,13 +29,28 @@ def main():
 	print('\nEuropean Call Analytic\n', ev.BlackScholesVanillaEuropeanCallWithGreeks(80, 85, 0.05, 0.4, 1, 1.25))
 	print('\nEuropean Call Monte-Carlo\n', ev.MonteCarloVanillaEuropeanCallWithGreeks(80, 85, 0.05, 0.4, 1, 1.25))		
 
+	print('\nEuropean Call Analytic with Knock In at S=0.01\n', eb.MonteCarloKnockInEuropeanCallWithGreeks(80, 85, 0.05, 0.4, 1, 1.25, 0.01))
 	print('\nEuropean Call Monte-Carlo with Knock In at S=0\n', eb.MonteCarloKnockInEuropeanCallWithGreeks(80, 85, 0.05, 0.4, 1, 1.25, 0))
+
+	print('\nEuropean Call Analytic with Knock In at S=85\n', eb.AnalyticBlackScholesKnockInCall(80, 85, 0.05, 0.4, 1, 1.25, 85))	
 	print('\nEuropean Call Monte-Carlo with Knock In at S=85\n', eb.MonteCarloKnockInEuropeanCallWithGreeks(80, 85, 0.05, 0.4, 1, 1.25, 85))
+
+	print('\nEuropean Call Analytic with Knock Out at S=85\n', eb.AnalyticBlackScholesKnockOutCall(80, 85, 0.05, 0.4, 1, 1.25, 85))	
 	print('\nEuropean Call Monte-Carlo with Knock Out at S=85\n', eb.MonteCarloKnockOutEuropeanCallWithGreeks(80, 85, 0.05, 0.4, 1, 1.25, 85))
+	
+	print('\nEuropean Call Analytic with Knock Out at S=1000\n', eb.AnalyticBlackScholesKnockOutCall(80, 85, 0.05, 0.4, 1, 1.25, 1000))
 	print('\nEuropean Call Monte-Carlo with Knock Out at S=1000\n', eb.MonteCarloKnockOutEuropeanCallWithGreeks(80, 85, 0.05, 0.4, 1, 1.25, 1000))
+	
+	print('\nEuropean Call Analytic with Knock In at S=75\n', eb.AnalyticBlackScholesKnockInCall(80, 85, 0.05, 0.4, 1, 1.25, 75))	
 	print('\nEuropean Call Monte-Carlo with Knock In at S=75\n', eb.MonteCarloKnockInEuropeanCallWithGreeks(80, 85, 0.05, 0.4, 1, 1.25, 75))
+
+	print('\nEuropean Call Analytic with Knock Out at S=75\n', eb.AnalyticBlackScholesKnockOutCall(80, 85, 0.05, 0.4, 1, 1.25, 75))
 	print('\nEuropean Call Monte-Carlo with Knock Out at S=75\n', eb.MonteCarloKnockOutEuropeanCallWithGreeks(80, 85, 0.05, 0.4, 1, 1.25, 75))
+	
+	print('\nEuropean Call Analytic with Knock In at S=110\n', eb.AnalyticBlackScholesKnockInCall(80, 85, 0.05, 0.4, 1, 1.25, 110))
 	print('\nEuropean Call Monte-Carlo with Knock In at S=110\n', eb.MonteCarloKnockInEuropeanCallWithGreeks(80, 85, 0.05, 0.4, 1, 1.25, 110))
+	
+	print('\nEuropean Call Analytic with Knock Out at S=110\n', eb.AnalyticBlackScholesKnockOutCall(80, 85, 0.05, 0.4, 1, 1.25, 110))	
 	print('\nEuropean Call Monte-Carlo with Knock Out at S=110\n', eb.MonteCarloKnockOutEuropeanCallWithGreeks(80, 85, 0.05, 0.4, 1, 1.25, 110))
 
 	print('\n')
@@ -49,14 +64,32 @@ def main():
 	print('\nEuropean Put Analytic\n', ev.BlackScholesVanillaEuropeanPutWithGreeks(80, 85, 0.05, 0.4, 1, 1.25))
 	print('\nEuropean Put Monte-Carlo\n', ev.MonteCarloVanillaEuropeanPutWithGreeks(80, 85, 0.05, 0.4, 1, 1.25))
 
+	print('\nEuropean Put Analytic with Knock In at S=0.01\n', eb.AnalyticBlackScholesKnockInPut(80, 85, 0.05, 0.4, 1, 1.25, 0.01))		
 	print('\nEuropean Put Monte-Carlo with Knock In at S=0\n', eb.MonteCarloKnockInEuropeanPutWithGreeks(80, 85, 0.05, 0.4, 1, 1.25, 0))
+	
+	print('\nEuropean Put Analytic with Knock In at S=85\n', eb.AnalyticBlackScholesKnockInPut(80, 85, 0.05, 0.4, 1, 1.25, 85))		
 	print('\nEuropean Put Monte-Carlo with Knock In at S=85\n', eb.MonteCarloKnockInEuropeanPutWithGreeks(80, 85, 0.05, 0.4, 1, 1.25, 85))
+	
+	print('\nEuropean Put Analytic with Knock Out at S=85\n', eb.AnalyticBlackScholesKnockOutPut(80, 85, 0.05, 0.4, 1, 1.25, 85))		
 	print('\nEuropean Put Monte-Carlo with Knock Out at S=85\n', eb.MonteCarloKnockOutEuropeanPutWithGreeks(80, 85, 0.05, 0.4, 1, 1.25, 85))
+	
+	
+	print('\nEuropean Put Analytic with Knock Out at S=1000\n', eb.AnalyticBlackScholesKnockOutPut(80, 85, 0.05, 0.4, 1, 1.25, 1000))		
 	print('\nEuropean Put Monte-Carlo with Knock Out at S=1000\n', eb.MonteCarloKnockOutEuropeanPutWithGreeks(80, 85, 0.05, 0.4, 1, 1.25, 1000))
+	
+	print('\nEuropean Put Analytic with Knock In at S=75\n', eb.AnalyticBlackScholesKnockInPut(80, 85, 0.05, 0.4, 1, 1.25, 75))				
 	print('\nEuropean Put Monte-Carlo with Knock In at S=75\n', eb.MonteCarloKnockInEuropeanPutWithGreeks(80, 85, 0.05, 0.4, 1, 1.25, 75))
+	
+	print('\nEuropean Put Analytic with Knock Out at S=75\n', eb.AnalyticBlackScholesKnockOutPut(80, 85, 0.05, 0.4, 1, 1.25, 75))				
 	print('\nEuropean Put Monte-Carlo with Knock Out at S=75\n', eb.MonteCarloKnockOutEuropeanPutWithGreeks(80, 85, 0.05, 0.4, 1, 1.25, 75))
+	
+	print('\nEuropean Put Analytic with Knock In at S=110\n', eb.AnalyticBlackScholesKnockInPut(80, 85, 0.05, 0.4, 1, 1.25, 110))					
 	print('\nEuropean Put Monte-Carlo with Knock In at S=110\n', eb.MonteCarloKnockInEuropeanPutWithGreeks(80, 85, 0.05, 0.4, 1, 1.25, 110))
+	
+	print('\nEuropean Put Analytic with Knock Out at S=110\n', eb.AnalyticBlackScholesKnockOutPut(80, 85, 0.05, 0.4, 1, 1.25, 110))				
 	print('\nEuropean Put Monte-Carlo with Knock Out at S=110\n', eb.MonteCarloKnockOutEuropeanPutWithGreeks(80, 85, 0.05, 0.4, 1, 1.25, 110))
+	
+
 
 	print('\n')
 	print('**********************************************************************************************************************')
