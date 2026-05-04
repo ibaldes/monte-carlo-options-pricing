@@ -1,5 +1,8 @@
+*****************************************************
+
 Code for Monte-Carlo pricing of options assuming the Black-Scholes model and risk-neutral probability. Undergoing further improvements and development (American, Bermudan, Parisian, Asian, ... Options.)
 
+*****************************************************
 ******************* Libraries Used ******************
 
 - pandas
@@ -16,7 +19,8 @@ EuropeanVanilla.py contains functions for the following:
 - Monte-Carlo implementation Vanilla European options pricing with or without Greeks. These also return standard errors of the prices and greeks.
 
 EuropeanBarrier.py contains functions for the following:
-- Monte-Carlo pricing for Knock-in/Knock-out European put and calls with Greeks. These also return standard errors of the prices and greeks.
+- Analytic pricing for Knock-in/Knock-out European puts and calls (greeks: to be added).
+- Monte-Carlo pricing for Knock-in/Knock-out European puts and calls with Greeks. These also return standard errors of the prices and greeks.
 
 PricingExample.py calls the functions from EuropeanVanilla.py and EuropeanBarrier.py showing some example prices.
 
@@ -28,6 +32,7 @@ ScalingWithNsimulations_PutOption.py calls functions from EuropeanVanilla.py and
 
 The plots folder is where the generated plots are stored.
 
+*****************************************************
 ***************** Eventual Utility ****************
 
 These scripts can eventually be used for generating training data for neural network pricing of exotics. Similarly, they can be used to validate output of PDE based approaches for exotic pricing.
