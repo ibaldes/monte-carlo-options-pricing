@@ -23,7 +23,7 @@ def main():
 	print('\n')	
 	print ("Starting simulations...\n")
 
-	NSim_array = np.array([10, 20, 40, 70, 100, 200, 400, 700, 1e3, 2e3, 4e3, 7e3, 1e4, 2e4, 4e4, 7e4, 1e5]) ##### array of n_simulations values to scan over
+	NSim_array = np.array([10, 20, 40, 70, 100, 200, 400, 700, 1e3, 2e3, 4e3, 7e3, 1e4, 2e4, 4e4, 7e4, 1e5, 4e5, 7e5, 1e6]) ##### array of n_simulations values to scan over	
 	n_examples = len(NSim_array)
 	Output_array = np.zeros((n_examples, 12)) # Output array: MonteCarloFixedStrikeLookBackCallWithGreeks function has an output of length 12
 	Output_array_2 = np.zeros((n_examples, 12)) # Output array: MonteCarloFixedStrikeLookBackCallWithGreeks function has an output of length 12
@@ -183,7 +183,7 @@ def main():
 	plt.title(f'Gamma of Floating Strike Look Back Call Option (S={Stockprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel(r'$\Gamma$ $(\$)^{-1}$')
-	plt.legend(loc='lower right')
+	plt.legend(loc='upper right')
 	plt.grid(True)
 	plt.xlim(1e1, 1e7)
 	plt.savefig("./plots/LookBackCallFloatingStrike/MonteCarloGammaConvergence_LookBackCall_FloatingStrike.jpg")

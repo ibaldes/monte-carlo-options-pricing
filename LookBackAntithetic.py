@@ -402,7 +402,7 @@ def AnalyticFixedStrikeLookBackPutWithGreeks(S,K,r,sigma,t,T,Smintodate=None):
 ############################################################################
 
 
-def generate_terminal_price_ForGreeks_withMinMaxPrice(S, r, sigma, t, T, n_steps=100, seed=0):
+def generate_terminal_price_ForGreeks_withMinMaxPrice_Antithetic(S, r, sigma, t, T, n_steps=100, seed=0):
 
 	'''
 	Generates terminal stock price, given evolution under the risk-neutral measure for the discounted stock price 
@@ -419,6 +419,8 @@ def generate_terminal_price_ForGreeks_withMinMaxPrice(S, r, sigma, t, T, n_steps
 	Output is the terminal price and the terminal prices for the perturbed quantities, which will be used for the finite difference estimates of the partial derivatives.
 	Also outputs the MIN and MAX Prices of the stock over the path, for the central simulation, and the perturbed quantities.
 	These MIN and MAX values will be used for the payoff filter of the barrier option.
+	
+	ALL THE OUTPUT IS DOUBLED WITH _AT NAMING USING THE ANTITHETIC VARIATES  
 	'''
 	
 	### set the random seed #######
@@ -480,8 +482,9 @@ def generate_terminal_price_ForGreeks_withMinMaxPrice(S, r, sigma, t, T, n_steps
 	MaxPrice_larger_sigma =	np.max(stock_price_array_larger_sigma)
 	
 	### Finite differences for t: finish with plus/minus 1 time step differences #############
+	addedjump_smaller_t = np.sqrt(time_step)*sigma*rng.normal(0, 1)
 	
-	terminal_price_smaller_t = stock_price_array[-1]*(1+np.sqrt(time_step)*sigma*rng.normal(0, 1)+r*time_step)
+	terminal_price_smaller_t = stock_price_array[-1]*(1+addedjump_smaller_t+r*time_step)
 	terminal_price_larger_t = stock_price_array[-2]
 	
 	MinPrice_smaller_t = min(terminal_price_smaller_t, MinPrice)
@@ -508,9 +511,92 @@ def generate_terminal_price_ForGreeks_withMinMaxPrice(S, r, sigma, t, T, n_steps
 	MaxPrice_smaller_r = np.max(stock_price_array_smaller_r)
 	
 	MinPrice_larger_r = np.min(stock_price_array_larger_r)
-	MaxPrice_larger_r = np.max(stock_price_array_larger_r)		
+	MaxPrice_larger_r = np.max(stock_price_array_larger_r)
 	
-	return(terminal_price, terminal_price_smaller_S, terminal_price_larger_S, terminal_price_smaller_sigma, terminal_price_larger_sigma, terminal_price_smaller_t, terminal_price_larger_t, terminal_price_smaller_r, terminal_price_larger_r, MinPrice, MaxPrice, MinPrice_smaller_S, MaxPrice_smaller_S, MinPrice_larger_S, MaxPrice_larger_S, MinPrice_smaller_sigma, MaxPrice_smaller_sigma, MinPrice_larger_sigma, MaxPrice_larger_sigma, MinPrice_smaller_t, MaxPrice_smaller_t, MinPrice_larger_t, MaxPrice_larger_t, MinPrice_smaller_r, MaxPrice_smaller_r,  MinPrice_larger_r, MaxPrice_larger_r)
+	#################################################
+	######	Antithetic Pairs of the above ###########
+	
+	brownian_array_AT = -brownian_array
+
+	stock_price_array_AT = np.zeros(n_steps+1)
+	stock_price_array_AT[0] = S	
+	
+	for j in range(1,n_steps+1):
+		stock_price_array_AT[j] = stock_price_array_AT[j-1]*(1+brownian_array_AT[j-1]+r*time_step)
+	
+	### return the terminal stock price	
+	terminal_price_AT = stock_price_array_AT[-1]
+	
+	MinPrice_AT = np.min(stock_price_array_AT)
+	MaxPrice_AT = np.max(stock_price_array_AT)
+	
+	### Finite differences for Delta and Gamma: start with 1 cent greater or smaller price ###
+	terminal_price_smaller_S_AT = terminal_price_AT*(S-0.01)/S
+	terminal_price_larger_S_AT = terminal_price_AT*(S+0.01)/S
+
+	MinPrice_smaller_S_AT = MinPrice_AT*(S-0.01)/S
+	MaxPrice_smaller_S_AT = MaxPrice_AT*(S-0.01)/S
+	
+	MinPrice_larger_S_AT = MinPrice_AT*(S+0.01)/S
+	MaxPrice_larger_S_AT = MaxPrice_AT*(S+0.01)/S
+
+	### Finite differences for sigma: start with 1 per cent greater or smaller volatility ###
+	brownian_array_smaller_sigma_AT = brownian_array_AT*(sigma-0.01)/sigma
+	brownian_array_larger_sigma_AT = brownian_array_AT*(sigma+0.01)/sigma
+	
+	stock_price_array_smaller_sigma_AT = np.zeros(n_steps+1)
+	stock_price_array_larger_sigma_AT = np.zeros(n_steps+1)
+	stock_price_array_smaller_sigma_AT[0] = S
+	stock_price_array_larger_sigma_AT[0] = S
+	
+	for j in range(1,n_steps+1):
+		stock_price_array_smaller_sigma_AT[j] = stock_price_array_smaller_sigma_AT[j-1]*(1+brownian_array_smaller_sigma_AT[j-1]+r*time_step)
+		stock_price_array_larger_sigma_AT[j] = stock_price_array_larger_sigma_AT[j-1]*(1+brownian_array_larger_sigma_AT[j-1]+r*time_step)
+	
+	terminal_price_smaller_sigma_AT = stock_price_array_smaller_sigma_AT[-1]
+	terminal_price_larger_sigma_AT = stock_price_array_larger_sigma_AT[-1]
+	
+	MinPrice_smaller_sigma_AT = np.min(stock_price_array_smaller_sigma_AT)
+	MaxPrice_smaller_sigma_AT = np.max(stock_price_array_smaller_sigma_AT)
+	
+	MinPrice_larger_sigma_AT = np.min(stock_price_array_larger_sigma_AT)
+	MaxPrice_larger_sigma_AT = np.max(stock_price_array_larger_sigma_AT)
+	
+	### Finite differences for t: finish with plus/minus 1 time step differences #############
+	
+	terminal_price_smaller_t_AT = stock_price_array_AT[-1]*(1-addedjump_smaller_t+r*time_step)
+	terminal_price_larger_t_AT = stock_price_array_AT[-2]
+
+	MinPrice_smaller_t_AT = min(terminal_price_smaller_t_AT, MinPrice_AT)
+	MaxPrice_smaller_t_AT = max(terminal_price_smaller_t_AT, MaxPrice_AT)
+	
+	MinPrice_larger_t_AT = np.min(stock_price_array_AT[0:-1])
+	MaxPrice_larger_t_AT = np.max(stock_price_array_AT[0:-1])	
+
+	### Finite differences for r: start with plus/minus 1 bps (1e-4 in r) difference ########
+	
+	stock_price_array_smaller_r_AT = np.zeros(n_steps+1)
+	stock_price_array_larger_r_AT = np.zeros(n_steps+1)
+	stock_price_array_smaller_r_AT[0] = S
+	stock_price_array_larger_r_AT[0] = S
+	
+	for j in range(1,n_steps+1):
+		stock_price_array_smaller_r_AT[j] = stock_price_array_smaller_r_AT[j-1]*(1+brownian_array_AT[j-1]+(r-1e-4)*time_step)
+		stock_price_array_larger_r_AT[j] = stock_price_array_larger_r_AT[j-1]*(1+brownian_array_AT[j-1]+(r+1e-4)*time_step)
+	
+	terminal_price_smaller_r_AT = stock_price_array_smaller_r_AT[-1]
+	terminal_price_larger_r_AT = stock_price_array_larger_r_AT[-1]
+	
+	MinPrice_smaller_r_AT = np.min(stock_price_array_smaller_r_AT)
+	MaxPrice_smaller_r_AT = np.max(stock_price_array_smaller_r_AT)
+	
+	MinPrice_larger_r_AT = np.min(stock_price_array_larger_r_AT)
+	MaxPrice_larger_r_AT = np.max(stock_price_array_larger_r_AT)
+	
+	#################################################
+	#################################################
+	
+	return(terminal_price, terminal_price_smaller_S, terminal_price_larger_S, terminal_price_smaller_sigma, terminal_price_larger_sigma, terminal_price_smaller_t, terminal_price_larger_t, terminal_price_smaller_r, terminal_price_larger_r, MinPrice, MaxPrice, MinPrice_smaller_S, MaxPrice_smaller_S, MinPrice_larger_S, MaxPrice_larger_S, MinPrice_smaller_sigma, MaxPrice_smaller_sigma, MinPrice_larger_sigma, MaxPrice_larger_sigma, MinPrice_smaller_t, MaxPrice_smaller_t, MinPrice_larger_t, MaxPrice_larger_t, MinPrice_smaller_r, MaxPrice_smaller_r,  MinPrice_larger_r, MaxPrice_larger_r, terminal_price_AT, terminal_price_smaller_S_AT, terminal_price_larger_S_AT, terminal_price_smaller_sigma_AT, terminal_price_larger_sigma_AT, terminal_price_smaller_t_AT, terminal_price_larger_t_AT, terminal_price_smaller_r_AT, terminal_price_larger_r_AT, MinPrice_AT, MaxPrice_AT, MinPrice_smaller_S_AT, MaxPrice_smaller_S_AT, MinPrice_larger_S_AT, MaxPrice_larger_S_AT, MinPrice_smaller_sigma_AT, MaxPrice_smaller_sigma_AT, MinPrice_larger_sigma_AT, MaxPrice_larger_sigma_AT, MinPrice_smaller_t_AT, MaxPrice_smaller_t_AT, MinPrice_larger_t_AT, MaxPrice_larger_t_AT, MinPrice_smaller_r_AT, MaxPrice_smaller_r_AT,  MinPrice_larger_r_AT, MaxPrice_larger_r_AT)
 
 #####################
 
@@ -530,7 +616,7 @@ def MonteCarloFloatingStrikeLookBackCallWithGreeks(S, r, sigma, t, T, Smintodate
 	n_steps is the number of steps to use (defaults to 100)
 	BaseSeed is the starting seed for the Seeds input into the Monte-Carlo
 	
-	Note: The Payoff is given by S(T) - Smin, where Smin is the minimum over the option lifetime
+	Note: The Payoff is given by S(T) - Smin, where Smin is the minimum over the option lifetime, and S(T) is the price at maturity.
 	
 	OUTPUT:
 	option value
@@ -553,6 +639,10 @@ def MonteCarloFloatingStrikeLookBackCallWithGreeks(S, r, sigma, t, T, Smintodate
 	n_steps = int(n_steps)
 	n_simulations = int(n_simulations)
 	
+	#### reduce n_simulations by 2, as we will be using antithetic pairs
+	n_simulations = n_simulations/2
+	n_simulations = int(n_simulations)
+	
 	#### calculate the terminal prices and store them as a list ####
 	#### use multiple processors to speed up the simulations #######
 	seed_number_array = np.arange(n_simulations) + BaseSeed
@@ -561,12 +651,13 @@ def MonteCarloFloatingStrikeLookBackCallWithGreeks(S, r, sigma, t, T, Smintodate
 	
 
 	with mp.Pool() as pool:
-		full_terminal_price_array = pool.starmap(generate_terminal_price_ForGreeks_withMinMaxPrice, args)
+		full_terminal_price_array = pool.starmap(generate_terminal_price_ForGreeks_withMinMaxPrice_Antithetic, args)
 
 	#### 
 	full_terminal_price_array = np.array(full_terminal_price_array)
 	
-	full_terminal_price_df = pd.DataFrame(full_terminal_price_array, columns=['terminal_price', 'terminal_price_smaller_S', 'terminal_price_larger_S', 'terminal_price_smaller_sigma', 'terminal_price_larger_sigma', 'terminal_price_smaller_t', 'terminal_price_larger_t', 'terminal_price_smaller_r', 'terminal_price_larger_r', 'MinPrice', 'MaxPrice', 'MinPrice_smaller_S', 'MaxPrice_smaller_S', 'MinPrice_larger_S', 'MaxPrice_larger_S', 'MinPrice_smaller_sigma', 'MaxPrice_smaller_sigma', 'MinPrice_larger_sigma', 'MaxPrice_larger_sigma', 'MinPrice_smaller_t', 'MaxPrice_smaller_t', 'MinPrice_larger_t', 'MaxPrice_larger_t', 'MinPrice_smaller_r', 'MaxPrice_smaller_r',  'MinPrice_larger_r', 'MaxPrice_larger_r'])
+	full_terminal_price_df = pd.DataFrame(full_terminal_price_array, columns=['terminal_price', 'terminal_price_smaller_S', 'terminal_price_larger_S', 'terminal_price_smaller_sigma', 'terminal_price_larger_sigma', 'terminal_price_smaller_t', 'terminal_price_larger_t', 'terminal_price_smaller_r', 'terminal_price_larger_r', 'MinPrice', 'MaxPrice', 'MinPrice_smaller_S', 'MaxPrice_smaller_S', 'MinPrice_larger_S', 'MaxPrice_larger_S', 'MinPrice_smaller_sigma', 'MaxPrice_smaller_sigma', 'MinPrice_larger_sigma', 'MaxPrice_larger_sigma', 'MinPrice_smaller_t', 'MaxPrice_smaller_t', 'MinPrice_larger_t', 'MaxPrice_larger_t', 'MinPrice_smaller_r', 'MaxPrice_smaller_r',  'MinPrice_larger_r', 'MaxPrice_larger_r', 'terminal_price_AT', 'terminal_price_smaller_S_AT', 'terminal_price_larger_S_AT', 'terminal_price_smaller_sigma_AT', 'terminal_price_larger_sigma_AT', 'terminal_price_smaller_t_AT', 'terminal_price_larger_t_AT', 'terminal_price_smaller_r_AT', 'terminal_price_larger_r_AT', 'MinPrice_AT', 'MaxPrice_AT', 'MinPrice_smaller_S_AT', 'MaxPrice_smaller_S_AT', 'MinPrice_larger_S_AT', 'MaxPrice_larger_S_AT', 'MinPrice_smaller_sigma_AT', 'MaxPrice_smaller_sigma_AT', 'MinPrice_larger_sigma_AT', 'MaxPrice_larger_sigma_AT', 'MinPrice_smaller_t_AT', 'MaxPrice_smaller_t_AT', 'MinPrice_larger_t_AT', 'MaxPrice_larger_t_AT', 'MinPrice_smaller_r_AT', 'MaxPrice_smaller_r_AT',  'MinPrice_larger_r_AT', 'MaxPrice_larger_r_AT'])
+
 	
 	######
 	
@@ -592,12 +683,9 @@ def MonteCarloFloatingStrikeLookBackCallWithGreeks(S, r, sigma, t, T, Smintodate
 	
 	###### CALCULATE THE OPTION PRICE ###################
 	### extract "central" terminal price array #######
-	terminal_price_array = full_terminal_price_df['terminal_price'].to_numpy()
-	MinPrice_array = full_terminal_price_df['MinPrice'].to_numpy()
+	terminal_price_array = np.concatenate(( full_terminal_price_df['terminal_price'].to_numpy() , full_terminal_price_df['terminal_price_AT'].to_numpy() ))
+	MinPrice_array = np.concatenate(( full_terminal_price_df['MinPrice'].to_numpy() , full_terminal_price_df['MinPrice_AT'].to_numpy() ))
 	MinPrice_array = MinPrice_array*BGKcorrection
-	
-	### initialize option payoff array to zero values ####	
-	payoff_array = np.zeros(n_simulations)
 	
 	#### calculate the option payoff for each of the terminal prices #####
 	payoff_array = np.maximum( terminal_price_array - MinPrice_array, terminal_price_array - Smintodate )
@@ -614,11 +702,11 @@ def MonteCarloFloatingStrikeLookBackCallWithGreeks(S, r, sigma, t, T, Smintodate
 	
 	############## THE GREEKS ######################
 	#### Calculate Delta = dV/dS (partial) #########
-	terminal_price_array_smaller_S = full_terminal_price_df['terminal_price_smaller_S'].to_numpy()
-	terminal_price_array_larger_S = full_terminal_price_df['terminal_price_larger_S'].to_numpy()
+	terminal_price_array_smaller_S = np.concatenate(( full_terminal_price_df['terminal_price_smaller_S'].to_numpy(), full_terminal_price_df['terminal_price_smaller_S_AT'].to_numpy() ))
+	terminal_price_array_larger_S = np.concatenate(( full_terminal_price_df['terminal_price_larger_S'].to_numpy(), full_terminal_price_df['terminal_price_larger_S_AT'].to_numpy() ))
 	
-	MinPrice_array_smaller_S = full_terminal_price_df['MinPrice_smaller_S'].to_numpy()
-	MinPrice_array_larger_S = full_terminal_price_df['MinPrice_larger_S'].to_numpy()
+	MinPrice_array_smaller_S = np.concatenate(( full_terminal_price_df['MinPrice_smaller_S'].to_numpy(), full_terminal_price_df['MinPrice_smaller_S_AT'].to_numpy() ))
+	MinPrice_array_larger_S = np.concatenate(( full_terminal_price_df['MinPrice_larger_S'].to_numpy(), full_terminal_price_df['MinPrice_larger_S_AT'].to_numpy() ))
 	MinPrice_array_smaller_S = MinPrice_array_smaller_S*BGKcorrection
 	MinPrice_array_larger_S = MinPrice_array_larger_S*BGKcorrection		
 	
@@ -647,11 +735,11 @@ def MonteCarloFloatingStrikeLookBackCallWithGreeks(S, r, sigma, t, T, Smintodate
 
 	#### Calculate Vega = dV/dsigma (partial) ######
 	
-	terminal_price_array_smaller_sigma = full_terminal_price_df['terminal_price_smaller_sigma'].to_numpy()
-	terminal_price_array_larger_sigma = full_terminal_price_df['terminal_price_larger_sigma'].to_numpy()
+	terminal_price_array_smaller_sigma = np.concatenate(( full_terminal_price_df['terminal_price_smaller_sigma'].to_numpy(), full_terminal_price_df['terminal_price_smaller_sigma_AT'].to_numpy() ))
+	terminal_price_array_larger_sigma = np.concatenate(( full_terminal_price_df['terminal_price_larger_sigma'].to_numpy(),  full_terminal_price_df['terminal_price_larger_sigma_AT'].to_numpy() ))
 	
-	MinPrice_array_smaller_sigma = full_terminal_price_df['MinPrice_smaller_sigma'].to_numpy()
-	MinPrice_array_larger_sigma = full_terminal_price_df['MinPrice_larger_sigma'].to_numpy()
+	MinPrice_array_smaller_sigma = np.concatenate(( full_terminal_price_df['MinPrice_smaller_sigma'].to_numpy(),  full_terminal_price_df['MinPrice_smaller_sigma_AT'].to_numpy() ))
+	MinPrice_array_larger_sigma = np.concatenate(( full_terminal_price_df['MinPrice_larger_sigma'].to_numpy(), full_terminal_price_df['MinPrice_larger_sigma_AT'].to_numpy() ))
 	MinPrice_array_smaller_sigma = MinPrice_array_smaller_sigma*BGKcorrection
 	MinPrice_array_larger_sigma = MinPrice_array_larger_sigma*BGKcorrection
 	
@@ -669,11 +757,11 @@ def MonteCarloFloatingStrikeLookBackCallWithGreeks(S, r, sigma, t, T, Smintodate
 	
 	#### Calculate Theta = -dV/dt (partial)  #######
 	
-	terminal_price_array_smaller_t = full_terminal_price_df['terminal_price_smaller_t'].to_numpy()
-	terminal_price_array_larger_t = full_terminal_price_df['terminal_price_larger_t'].to_numpy()
+	terminal_price_array_smaller_t = np.concatenate(( full_terminal_price_df['terminal_price_smaller_t'].to_numpy(), full_terminal_price_df['terminal_price_smaller_t_AT'].to_numpy() ))
+	terminal_price_array_larger_t =  np.concatenate(( full_terminal_price_df['terminal_price_larger_t'].to_numpy(), full_terminal_price_df['terminal_price_larger_t_AT'].to_numpy() ))
 
-	MinPrice_array_smaller_t = full_terminal_price_df['MinPrice_smaller_t'].to_numpy()
-	MinPrice_array_larger_t = full_terminal_price_df['MinPrice_larger_t'].to_numpy()
+	MinPrice_array_smaller_t = np.concatenate(( full_terminal_price_df['MinPrice_smaller_t'].to_numpy(), full_terminal_price_df['MinPrice_smaller_t_AT'].to_numpy() ))
+	MinPrice_array_larger_t = np.concatenate(( full_terminal_price_df['MinPrice_larger_t'].to_numpy(),  full_terminal_price_df['MinPrice_larger_t_AT'].to_numpy() ))
 	MinPrice_array_smaller_t = MinPrice_array_smaller_t*BGKcorrection
 	MinPrice_array_larger_t = MinPrice_array_larger_t*BGKcorrection
 
@@ -695,11 +783,11 @@ def MonteCarloFloatingStrikeLookBackCallWithGreeks(S, r, sigma, t, T, Smintodate
 	
 	#### Calculate Rho = dV/dr (partial)   #########
 	
-	terminal_price_array_smaller_r = full_terminal_price_df['terminal_price_smaller_r'].to_numpy()
-	terminal_price_array_larger_r = full_terminal_price_df['terminal_price_larger_r'].to_numpy()
+	terminal_price_array_smaller_r = np.concatenate(( full_terminal_price_df['terminal_price_smaller_r'].to_numpy(),  full_terminal_price_df['terminal_price_smaller_r_AT'].to_numpy() ))
+	terminal_price_array_larger_r = np.concatenate(( full_terminal_price_df['terminal_price_larger_r'].to_numpy(), full_terminal_price_df['terminal_price_larger_r_AT'].to_numpy() ))
 	
-	MinPrice_array_smaller_r = full_terminal_price_df['MinPrice_smaller_r'].to_numpy()
-	MinPrice_array_larger_r = full_terminal_price_df['MinPrice_larger_r'].to_numpy()
+	MinPrice_array_smaller_r = np.concatenate((  full_terminal_price_df['MinPrice_smaller_r'].to_numpy(),  full_terminal_price_df['MinPrice_smaller_r_AT'].to_numpy() ))
+	MinPrice_array_larger_r = np.concatenate(( full_terminal_price_df['MinPrice_larger_r'].to_numpy(),  full_terminal_price_df['MinPrice_larger_r_AT'].to_numpy() ))
 	MinPrice_array_smaller_r = MinPrice_array_smaller_r*BGKcorrection
 	MinPrice_array_larger_r = MinPrice_array_larger_r*BGKcorrection
 
@@ -759,6 +847,10 @@ def MonteCarloFloatingStrikeLookBackPutWithGreeks(S, r, sigma, t, T, Smaxtodate=
 	n_steps = int(n_steps)
 	n_simulations = int(n_simulations)
 	
+	#### reduce n_simulations by 2, as we will be using antithetic pairs
+	n_simulations = n_simulations/2
+	n_simulations = int(n_simulations)
+	
 	#### calculate the terminal prices and store them as a list ####
 	#### use multiple processors to speed up the simulations #######
 	seed_number_array = np.arange(n_simulations) + BaseSeed
@@ -767,12 +859,12 @@ def MonteCarloFloatingStrikeLookBackPutWithGreeks(S, r, sigma, t, T, Smaxtodate=
 	
 
 	with mp.Pool() as pool:
-		full_terminal_price_array = pool.starmap(generate_terminal_price_ForGreeks_withMinMaxPrice, args)
+		full_terminal_price_array = pool.starmap(generate_terminal_price_ForGreeks_withMinMaxPrice_Antithetic, args)
 
 	#### 
 	full_terminal_price_array = np.array(full_terminal_price_array)
 	
-	full_terminal_price_df = pd.DataFrame(full_terminal_price_array, columns=['terminal_price', 'terminal_price_smaller_S', 'terminal_price_larger_S', 'terminal_price_smaller_sigma', 'terminal_price_larger_sigma', 'terminal_price_smaller_t', 'terminal_price_larger_t', 'terminal_price_smaller_r', 'terminal_price_larger_r', 'MinPrice', 'MaxPrice', 'MinPrice_smaller_S', 'MaxPrice_smaller_S', 'MinPrice_larger_S', 'MaxPrice_larger_S', 'MinPrice_smaller_sigma', 'MaxPrice_smaller_sigma', 'MinPrice_larger_sigma', 'MaxPrice_larger_sigma', 'MinPrice_smaller_t', 'MaxPrice_smaller_t', 'MinPrice_larger_t', 'MaxPrice_larger_t', 'MinPrice_smaller_r', 'MaxPrice_smaller_r',  'MinPrice_larger_r', 'MaxPrice_larger_r'])
+	full_terminal_price_df = pd.DataFrame(full_terminal_price_array, columns=['terminal_price', 'terminal_price_smaller_S', 'terminal_price_larger_S', 'terminal_price_smaller_sigma', 'terminal_price_larger_sigma', 'terminal_price_smaller_t', 'terminal_price_larger_t', 'terminal_price_smaller_r', 'terminal_price_larger_r', 'MinPrice', 'MaxPrice', 'MinPrice_smaller_S', 'MaxPrice_smaller_S', 'MinPrice_larger_S', 'MaxPrice_larger_S', 'MinPrice_smaller_sigma', 'MaxPrice_smaller_sigma', 'MinPrice_larger_sigma', 'MaxPrice_larger_sigma', 'MinPrice_smaller_t', 'MaxPrice_smaller_t', 'MinPrice_larger_t', 'MaxPrice_larger_t', 'MinPrice_smaller_r', 'MaxPrice_smaller_r',  'MinPrice_larger_r', 'MaxPrice_larger_r', 'terminal_price_AT', 'terminal_price_smaller_S_AT', 'terminal_price_larger_S_AT', 'terminal_price_smaller_sigma_AT', 'terminal_price_larger_sigma_AT', 'terminal_price_smaller_t_AT', 'terminal_price_larger_t_AT', 'terminal_price_smaller_r_AT', 'terminal_price_larger_r_AT', 'MinPrice_AT', 'MaxPrice_AT', 'MinPrice_smaller_S_AT', 'MaxPrice_smaller_S_AT', 'MinPrice_larger_S_AT', 'MaxPrice_larger_S_AT', 'MinPrice_smaller_sigma_AT', 'MaxPrice_smaller_sigma_AT', 'MinPrice_larger_sigma_AT', 'MaxPrice_larger_sigma_AT', 'MinPrice_smaller_t_AT', 'MaxPrice_smaller_t_AT', 'MinPrice_larger_t_AT', 'MaxPrice_larger_t_AT', 'MinPrice_smaller_r_AT', 'MaxPrice_smaller_r_AT',  'MinPrice_larger_r_AT', 'MaxPrice_larger_r_AT'])
 	
 	######
 	
@@ -799,12 +891,9 @@ def MonteCarloFloatingStrikeLookBackPutWithGreeks(S, r, sigma, t, T, Smaxtodate=
 	
 	###### CALCULATE THE OPTION PRICE ###################
 	### extract "central" terminal price array #######
-	terminal_price_array = full_terminal_price_df['terminal_price'].to_numpy()
-	MaxPrice_array = full_terminal_price_df['MaxPrice'].to_numpy()
+	terminal_price_array = np.concatenate(( full_terminal_price_df['terminal_price'].to_numpy(), full_terminal_price_df['terminal_price_AT'].to_numpy() ))
+	MaxPrice_array = np.concatenate(( full_terminal_price_df['MaxPrice'].to_numpy(),  full_terminal_price_df['MaxPrice_AT'].to_numpy() )) 
 	MaxPrice_array = MaxPrice_array*BGKcorrection	
-	
-	### initialize option payoff array to zero values ####	
-	payoff_array = np.zeros(n_simulations)
 	
 	#### calculate the option payoff for each of the terminal prices #####
 	payoff_array = np.maximum( MaxPrice_array - terminal_price_array  , Smaxtodate - terminal_price_array  )
@@ -820,11 +909,11 @@ def MonteCarloFloatingStrikeLookBackPutWithGreeks(S, r, sigma, t, T, Smaxtodate=
 
 	############## THE GREEKS ######################
 	#### Calculate Delta = dV/dS (partial) #########
-	terminal_price_array_smaller_S = full_terminal_price_df['terminal_price_smaller_S'].to_numpy()
-	terminal_price_array_larger_S = full_terminal_price_df['terminal_price_larger_S'].to_numpy()
+	terminal_price_array_smaller_S = np.concatenate(( full_terminal_price_df['terminal_price_smaller_S'].to_numpy(),  full_terminal_price_df['terminal_price_smaller_S_AT'].to_numpy() ))
+	terminal_price_array_larger_S = np.concatenate(( full_terminal_price_df['terminal_price_larger_S'].to_numpy(),  full_terminal_price_df['terminal_price_larger_S_AT'].to_numpy() ))
 	
-	MaxPrice_array_smaller_S = full_terminal_price_df['MaxPrice_smaller_S'].to_numpy()
-	MaxPrice_array_larger_S = full_terminal_price_df['MaxPrice_larger_S'].to_numpy()
+	MaxPrice_array_smaller_S = np.concatenate(( full_terminal_price_df['MaxPrice_smaller_S'].to_numpy(),  full_terminal_price_df['MaxPrice_smaller_S_AT'].to_numpy() ))
+	MaxPrice_array_larger_S = np.concatenate(( full_terminal_price_df['MaxPrice_larger_S'].to_numpy(),  full_terminal_price_df['MaxPrice_larger_S_AT'].to_numpy() ))
 	MaxPrice_array_smaller_S = MaxPrice_array_smaller_S*BGKcorrection
 	MaxPrice_array_larger_S = MaxPrice_array_larger_S*BGKcorrection			
 	
@@ -853,11 +942,11 @@ def MonteCarloFloatingStrikeLookBackPutWithGreeks(S, r, sigma, t, T, Smaxtodate=
 
 	#### Calculate Vega = dV/dsigma (partial) ######
 	
-	terminal_price_array_smaller_sigma = full_terminal_price_df['terminal_price_smaller_sigma'].to_numpy()
-	terminal_price_array_larger_sigma = full_terminal_price_df['terminal_price_larger_sigma'].to_numpy()
+	terminal_price_array_smaller_sigma = np.concatenate(( full_terminal_price_df['terminal_price_smaller_sigma'].to_numpy(),  full_terminal_price_df['terminal_price_smaller_sigma_AT'].to_numpy() ))
+	terminal_price_array_larger_sigma = np.concatenate(( full_terminal_price_df['terminal_price_larger_sigma'].to_numpy(),  full_terminal_price_df['terminal_price_larger_sigma_AT'].to_numpy() ))
 	
-	MaxPrice_array_smaller_sigma = full_terminal_price_df['MaxPrice_smaller_sigma'].to_numpy()
-	MaxPrice_array_larger_sigma = full_terminal_price_df['MaxPrice_larger_sigma'].to_numpy()
+	MaxPrice_array_smaller_sigma = np.concatenate(( full_terminal_price_df['MaxPrice_smaller_sigma'].to_numpy(),  full_terminal_price_df['MaxPrice_smaller_sigma_AT'].to_numpy() ))
+	MaxPrice_array_larger_sigma = np.concatenate(( full_terminal_price_df['MaxPrice_larger_sigma'].to_numpy(),  full_terminal_price_df['MaxPrice_larger_sigma_AT'].to_numpy() ))
 	MaxPrice_array_smaller_sigma = MaxPrice_array_smaller_sigma*BGKcorrection
 	MaxPrice_array_larger_sigma = MaxPrice_array_larger_sigma*BGKcorrection		
 	
@@ -875,11 +964,11 @@ def MonteCarloFloatingStrikeLookBackPutWithGreeks(S, r, sigma, t, T, Smaxtodate=
 	
 	#### Calculate Theta = -dV/dt (partial)  #######
 	
-	terminal_price_array_smaller_t = full_terminal_price_df['terminal_price_smaller_t'].to_numpy()
-	terminal_price_array_larger_t = full_terminal_price_df['terminal_price_larger_t'].to_numpy()
+	terminal_price_array_smaller_t = np.concatenate(( full_terminal_price_df['terminal_price_smaller_t'].to_numpy(),  full_terminal_price_df['terminal_price_smaller_t_AT'].to_numpy() ))
+	terminal_price_array_larger_t = np.concatenate(( full_terminal_price_df['terminal_price_larger_t'].to_numpy(),  full_terminal_price_df['terminal_price_larger_t_AT'].to_numpy() ))
 
-	MaxPrice_array_smaller_t = full_terminal_price_df['MaxPrice_smaller_t'].to_numpy()
-	MaxPrice_array_larger_t = full_terminal_price_df['MaxPrice_larger_t'].to_numpy()
+	MaxPrice_array_smaller_t = np.concatenate(( full_terminal_price_df['MaxPrice_smaller_t'].to_numpy(), full_terminal_price_df['MaxPrice_smaller_t_AT'].to_numpy() ))
+	MaxPrice_array_larger_t = np.concatenate(( full_terminal_price_df['MaxPrice_larger_t'].to_numpy(),  full_terminal_price_df['MaxPrice_larger_t_AT'].to_numpy() ))
 	MaxPrice_array_smaller_t = MaxPrice_array_smaller_t*BGKcorrection
 	MaxPrice_array_larger_t = MaxPrice_array_larger_t*BGKcorrection	
 
@@ -901,11 +990,11 @@ def MonteCarloFloatingStrikeLookBackPutWithGreeks(S, r, sigma, t, T, Smaxtodate=
 	
 	#### Calculate Rho = dV/dr (partial)   #########
 	
-	terminal_price_array_smaller_r = full_terminal_price_df['terminal_price_smaller_r'].to_numpy()
-	terminal_price_array_larger_r = full_terminal_price_df['terminal_price_larger_r'].to_numpy()
+	terminal_price_array_smaller_r = np.concatenate(( full_terminal_price_df['terminal_price_smaller_r'].to_numpy(),  full_terminal_price_df['terminal_price_smaller_r_AT'].to_numpy() ))
+	terminal_price_array_larger_r = np.concatenate(( full_terminal_price_df['terminal_price_larger_r'].to_numpy(),  full_terminal_price_df['terminal_price_larger_r_AT'].to_numpy() ))
 	
-	MaxPrice_array_smaller_r = full_terminal_price_df['MaxPrice_smaller_r'].to_numpy()
-	MaxPrice_array_larger_r = full_terminal_price_df['MaxPrice_larger_r'].to_numpy()
+	MaxPrice_array_smaller_r = np.concatenate(( full_terminal_price_df['MaxPrice_smaller_r'].to_numpy(),  full_terminal_price_df['MaxPrice_smaller_r_AT'].to_numpy() ))
+	MaxPrice_array_larger_r = np.concatenate(( full_terminal_price_df['MaxPrice_larger_r'].to_numpy(), full_terminal_price_df['MaxPrice_larger_r_AT'].to_numpy() ))
 	MaxPrice_array_smaller_r = MaxPrice_array_smaller_r*BGKcorrection
 	MaxPrice_array_larger_r = MaxPrice_array_larger_r*BGKcorrection		
 
@@ -968,6 +1057,10 @@ def MonteCarloFixedStrikeLookBackCallWithGreeks(S, K, r, sigma, t, T, Smaxtodate
 	n_steps = int(n_steps)
 	n_simulations = int(n_simulations)
 	
+	#### reduce n_simulations by 2, as we will be using antithetic pairs
+	n_simulations = n_simulations/2
+	n_simulations = int(n_simulations)
+	
 	#### calculate the terminal prices and store them as a list ####
 	#### use multiple processors to speed up the simulations #######
 	seed_number_array = np.arange(n_simulations) + BaseSeed
@@ -976,12 +1069,12 @@ def MonteCarloFixedStrikeLookBackCallWithGreeks(S, K, r, sigma, t, T, Smaxtodate
 	
 
 	with mp.Pool() as pool:
-		full_terminal_price_array = pool.starmap(generate_terminal_price_ForGreeks_withMinMaxPrice, args)
+		full_terminal_price_array = pool.starmap(generate_terminal_price_ForGreeks_withMinMaxPrice_Antithetic, args)
 
 	#### 
 	full_terminal_price_array = np.array(full_terminal_price_array)
 	
-	full_terminal_price_df = pd.DataFrame(full_terminal_price_array, columns=['terminal_price', 'terminal_price_smaller_S', 'terminal_price_larger_S', 'terminal_price_smaller_sigma', 'terminal_price_larger_sigma', 'terminal_price_smaller_t', 'terminal_price_larger_t', 'terminal_price_smaller_r', 'terminal_price_larger_r', 'MinPrice', 'MaxPrice', 'MinPrice_smaller_S', 'MaxPrice_smaller_S', 'MinPrice_larger_S', 'MaxPrice_larger_S', 'MinPrice_smaller_sigma', 'MaxPrice_smaller_sigma', 'MinPrice_larger_sigma', 'MaxPrice_larger_sigma', 'MinPrice_smaller_t', 'MaxPrice_smaller_t', 'MinPrice_larger_t', 'MaxPrice_larger_t', 'MinPrice_smaller_r', 'MaxPrice_smaller_r',  'MinPrice_larger_r', 'MaxPrice_larger_r'])
+	full_terminal_price_df = pd.DataFrame(full_terminal_price_array, columns=['terminal_price', 'terminal_price_smaller_S', 'terminal_price_larger_S', 'terminal_price_smaller_sigma', 'terminal_price_larger_sigma', 'terminal_price_smaller_t', 'terminal_price_larger_t', 'terminal_price_smaller_r', 'terminal_price_larger_r', 'MinPrice', 'MaxPrice', 'MinPrice_smaller_S', 'MaxPrice_smaller_S', 'MinPrice_larger_S', 'MaxPrice_larger_S', 'MinPrice_smaller_sigma', 'MaxPrice_smaller_sigma', 'MinPrice_larger_sigma', 'MaxPrice_larger_sigma', 'MinPrice_smaller_t', 'MaxPrice_smaller_t', 'MinPrice_larger_t', 'MaxPrice_larger_t', 'MinPrice_smaller_r', 'MaxPrice_smaller_r',  'MinPrice_larger_r', 'MaxPrice_larger_r', 'terminal_price_AT', 'terminal_price_smaller_S_AT', 'terminal_price_larger_S_AT', 'terminal_price_smaller_sigma_AT', 'terminal_price_larger_sigma_AT', 'terminal_price_smaller_t_AT', 'terminal_price_larger_t_AT', 'terminal_price_smaller_r_AT', 'terminal_price_larger_r_AT', 'MinPrice_AT', 'MaxPrice_AT', 'MinPrice_smaller_S_AT', 'MaxPrice_smaller_S_AT', 'MinPrice_larger_S_AT', 'MaxPrice_larger_S_AT', 'MinPrice_smaller_sigma_AT', 'MaxPrice_smaller_sigma_AT', 'MinPrice_larger_sigma_AT', 'MaxPrice_larger_sigma_AT', 'MinPrice_smaller_t_AT', 'MaxPrice_smaller_t_AT', 'MinPrice_larger_t_AT', 'MaxPrice_larger_t_AT', 'MinPrice_smaller_r_AT', 'MaxPrice_smaller_r_AT',  'MinPrice_larger_r_AT', 'MaxPrice_larger_r_AT'])
 	
 	######
 	
@@ -1007,9 +1100,9 @@ def MonteCarloFixedStrikeLookBackCallWithGreeks(S, K, r, sigma, t, T, Smaxtodate
 	Smaxtodate = Smaxtodate*BGKcorrection	
 	
 	###### CALCULATE THE OPTION PRICE ###################
-	### extract "central" max price array #######
+	### extract "central" terminal price array #######
 
-	MaxPrice_array = full_terminal_price_df['MaxPrice'].to_numpy()
+	MaxPrice_array = np.concatenate(( full_terminal_price_df['MaxPrice'].to_numpy(),  full_terminal_price_df['MaxPrice_AT'].to_numpy() ))
 	MaxPrice_array = MaxPrice_array*BGKcorrection
 	
 	### initialize option payoff array to zero values ####	
@@ -1032,8 +1125,8 @@ def MonteCarloFixedStrikeLookBackCallWithGreeks(S, K, r, sigma, t, T, Smaxtodate
 	############## THE GREEKS ######################
 	#### Calculate Delta = dV/dS (partial) #########
 	
-	MaxPrice_array_smaller_S = full_terminal_price_df['MaxPrice_smaller_S'].to_numpy()
-	MaxPrice_array_larger_S = full_terminal_price_df['MaxPrice_larger_S'].to_numpy()
+	MaxPrice_array_smaller_S = np.concatenate(( full_terminal_price_df['MaxPrice_smaller_S'].to_numpy(),  full_terminal_price_df['MaxPrice_smaller_S_AT'].to_numpy() ))
+	MaxPrice_array_larger_S = np.concatenate(( full_terminal_price_df['MaxPrice_larger_S'].to_numpy(),  full_terminal_price_df['MaxPrice_larger_S_AT'].to_numpy() ))
 	MaxPrice_array_smaller_S = MaxPrice_array_smaller_S*BGKcorrection 
 	MaxPrice_array_larger_S = MaxPrice_array_larger_S*BGKcorrection 		
 	
@@ -1064,8 +1157,8 @@ def MonteCarloFixedStrikeLookBackCallWithGreeks(S, K, r, sigma, t, T, Smaxtodate
 
 	#### Calculate Vega = dV/dsigma (partial) ######
 	
-	MaxPrice_array_smaller_sigma = full_terminal_price_df['MaxPrice_smaller_sigma'].to_numpy()
-	MaxPrice_array_larger_sigma = full_terminal_price_df['MaxPrice_larger_sigma'].to_numpy()
+	MaxPrice_array_smaller_sigma = np.concatenate(( full_terminal_price_df['MaxPrice_smaller_sigma'].to_numpy(),  full_terminal_price_df['MaxPrice_smaller_sigma_AT'].to_numpy() ))
+	MaxPrice_array_larger_sigma = np.concatenate(( full_terminal_price_df['MaxPrice_larger_sigma'].to_numpy(),  full_terminal_price_df['MaxPrice_larger_sigma_AT'].to_numpy() ))
 	MaxPrice_array_smaller_sigma = MaxPrice_array_smaller_sigma*BGKcorrection 
 	MaxPrice_array_larger_sigma = MaxPrice_array_larger_sigma*BGKcorrection 
 	
@@ -1085,8 +1178,8 @@ def MonteCarloFixedStrikeLookBackCallWithGreeks(S, K, r, sigma, t, T, Smaxtodate
 	
 	#### Calculate Theta = -dV/dt (partial)  #######
 
-	MaxPrice_array_smaller_t = full_terminal_price_df['MaxPrice_smaller_t'].to_numpy()
-	MaxPrice_array_larger_t = full_terminal_price_df['MaxPrice_larger_t'].to_numpy()
+	MaxPrice_array_smaller_t = np.concatenate(( full_terminal_price_df['MaxPrice_smaller_t'].to_numpy(),  full_terminal_price_df['MaxPrice_smaller_t_AT'].to_numpy() ))
+	MaxPrice_array_larger_t = np.concatenate(( full_terminal_price_df['MaxPrice_larger_t'].to_numpy(),  full_terminal_price_df['MaxPrice_larger_t_AT'].to_numpy() )) 
 	MaxPrice_array_smaller_t = MaxPrice_array_smaller_t*BGKcorrection 
 	MaxPrice_array_larger_t = MaxPrice_array_larger_t*BGKcorrection 
 
@@ -1109,8 +1202,8 @@ def MonteCarloFixedStrikeLookBackCallWithGreeks(S, K, r, sigma, t, T, Smaxtodate
 	
 	#### Calculate Rho = dV/dr (partial)   #########
 	
-	MaxPrice_array_smaller_r = full_terminal_price_df['MaxPrice_smaller_r'].to_numpy()
-	MaxPrice_array_larger_r = full_terminal_price_df['MaxPrice_larger_r'].to_numpy()
+	MaxPrice_array_smaller_r = np.concatenate(( full_terminal_price_df['MaxPrice_smaller_r'].to_numpy(),  full_terminal_price_df['MaxPrice_smaller_r_AT'].to_numpy() ))
+	MaxPrice_array_larger_r = np.concatenate(( full_terminal_price_df['MaxPrice_larger_r'].to_numpy(), full_terminal_price_df['MaxPrice_larger_r_AT'].to_numpy() ))
 	MaxPrice_array_smaller_r = MaxPrice_array_smaller_r*BGKcorrection 
 	MaxPrice_array_larger_r = MaxPrice_array_larger_r*BGKcorrection 
 
@@ -1177,6 +1270,10 @@ def MonteCarloFixedStrikeLookBackPutWithGreeks(S, K, r, sigma, t, T, Smintodate=
 	n_steps = int(n_steps)
 	n_simulations = int(n_simulations)
 	
+	#### reduce n_simulations by 2, as we will be using antithetic pairs
+	n_simulations = n_simulations/2
+	n_simulations = int(n_simulations)
+	
 	#### calculate the terminal prices and store them as a list ####
 	#### use multiple processors to speed up the simulations #######
 	seed_number_array = np.arange(n_simulations) + BaseSeed
@@ -1185,12 +1282,12 @@ def MonteCarloFixedStrikeLookBackPutWithGreeks(S, K, r, sigma, t, T, Smintodate=
 	
 
 	with mp.Pool() as pool:
-		full_terminal_price_array = pool.starmap(generate_terminal_price_ForGreeks_withMinMaxPrice, args)
+		full_terminal_price_array = pool.starmap(generate_terminal_price_ForGreeks_withMinMaxPrice_Antithetic, args)
 
 	#### 
 	full_terminal_price_array = np.array(full_terminal_price_array)
 	
-	full_terminal_price_df = pd.DataFrame(full_terminal_price_array, columns=['terminal_price', 'terminal_price_smaller_S', 'terminal_price_larger_S', 'terminal_price_smaller_sigma', 'terminal_price_larger_sigma', 'terminal_price_smaller_t', 'terminal_price_larger_t', 'terminal_price_smaller_r', 'terminal_price_larger_r', 'MinPrice', 'MaxPrice', 'MinPrice_smaller_S', 'MaxPrice_smaller_S', 'MinPrice_larger_S', 'MaxPrice_larger_S', 'MinPrice_smaller_sigma', 'MaxPrice_smaller_sigma', 'MinPrice_larger_sigma', 'MaxPrice_larger_sigma', 'MinPrice_smaller_t', 'MaxPrice_smaller_t', 'MinPrice_larger_t', 'MaxPrice_larger_t', 'MinPrice_smaller_r', 'MaxPrice_smaller_r',  'MinPrice_larger_r', 'MaxPrice_larger_r'])
+	full_terminal_price_df = pd.DataFrame(full_terminal_price_array, columns=['terminal_price', 'terminal_price_smaller_S', 'terminal_price_larger_S', 'terminal_price_smaller_sigma', 'terminal_price_larger_sigma', 'terminal_price_smaller_t', 'terminal_price_larger_t', 'terminal_price_smaller_r', 'terminal_price_larger_r', 'MinPrice', 'MaxPrice', 'MinPrice_smaller_S', 'MaxPrice_smaller_S', 'MinPrice_larger_S', 'MaxPrice_larger_S', 'MinPrice_smaller_sigma', 'MaxPrice_smaller_sigma', 'MinPrice_larger_sigma', 'MaxPrice_larger_sigma', 'MinPrice_smaller_t', 'MaxPrice_smaller_t', 'MinPrice_larger_t', 'MaxPrice_larger_t', 'MinPrice_smaller_r', 'MaxPrice_smaller_r',  'MinPrice_larger_r', 'MaxPrice_larger_r', 'terminal_price_AT', 'terminal_price_smaller_S_AT', 'terminal_price_larger_S_AT', 'terminal_price_smaller_sigma_AT', 'terminal_price_larger_sigma_AT', 'terminal_price_smaller_t_AT', 'terminal_price_larger_t_AT', 'terminal_price_smaller_r_AT', 'terminal_price_larger_r_AT', 'MinPrice_AT', 'MaxPrice_AT', 'MinPrice_smaller_S_AT', 'MaxPrice_smaller_S_AT', 'MinPrice_larger_S_AT', 'MaxPrice_larger_S_AT', 'MinPrice_smaller_sigma_AT', 'MaxPrice_smaller_sigma_AT', 'MinPrice_larger_sigma_AT', 'MaxPrice_larger_sigma_AT', 'MinPrice_smaller_t_AT', 'MaxPrice_smaller_t_AT', 'MinPrice_larger_t_AT', 'MaxPrice_larger_t_AT', 'MinPrice_smaller_r_AT', 'MaxPrice_smaller_r_AT',  'MinPrice_larger_r_AT', 'MaxPrice_larger_r_AT'])
 	
 	######
 	
@@ -1215,9 +1312,9 @@ def MonteCarloFixedStrikeLookBackPutWithGreeks(S, K, r, sigma, t, T, Smintodate=
 	Smintodate = Smintodate*BGKcorrection
 	
 	###### CALCULATE THE OPTION PRICE ###################
-	### extract "central" MinPrice array #######
-
-	MinPrice_array = full_terminal_price_df['MinPrice'].to_numpy()
+	### extract "central" terminal price array #######
+	
+	MinPrice_array = np.concatenate(( full_terminal_price_df['MinPrice'].to_numpy() , full_terminal_price_df['MinPrice_AT'].to_numpy() ))
 	MinPrice_array = MinPrice_array*BGKcorrection	
 	
 	### initialize option payoff array to zero values ####	
@@ -1240,8 +1337,8 @@ def MonteCarloFixedStrikeLookBackPutWithGreeks(S, K, r, sigma, t, T, Smintodate=
 	############## THE GREEKS ######################
 	#### Calculate Delta = dV/dS (partial) #########
 
-	MinPrice_array_smaller_S = full_terminal_price_df['MinPrice_smaller_S'].to_numpy()
-	MinPrice_array_larger_S = full_terminal_price_df['MinPrice_larger_S'].to_numpy()
+	MinPrice_array_smaller_S = np.concatenate(( full_terminal_price_df['MinPrice_smaller_S'].to_numpy(), full_terminal_price_df['MinPrice_smaller_S_AT'].to_numpy() ))
+	MinPrice_array_larger_S = np.concatenate(( full_terminal_price_df['MinPrice_larger_S'].to_numpy(), full_terminal_price_df['MinPrice_larger_S_AT'].to_numpy() ))
 	MinPrice_array_smaller_S = MinPrice_array_smaller_S*BGKcorrection
 	MinPrice_array_larger_S = MinPrice_array_larger_S*BGKcorrection	
 	
@@ -1272,8 +1369,8 @@ def MonteCarloFixedStrikeLookBackPutWithGreeks(S, K, r, sigma, t, T, Smintodate=
 
 	#### Calculate Vega = dV/dsigma (partial) ######
 	
-	MinPrice_array_smaller_sigma = full_terminal_price_df['MinPrice_smaller_sigma'].to_numpy()
-	MinPrice_array_larger_sigma = full_terminal_price_df['MinPrice_larger_sigma'].to_numpy()
+	MinPrice_array_smaller_sigma = np.concatenate(( full_terminal_price_df['MinPrice_smaller_sigma'].to_numpy(),  full_terminal_price_df['MinPrice_smaller_sigma_AT'].to_numpy() ))
+	MinPrice_array_larger_sigma = np.concatenate(( full_terminal_price_df['MinPrice_larger_sigma'].to_numpy(), full_terminal_price_df['MinPrice_larger_sigma_AT'].to_numpy() )) 
 	MinPrice_array_smaller_sigma = MinPrice_array_smaller_sigma*BGKcorrection
 	MinPrice_array_larger_sigma = MinPrice_array_larger_sigma*BGKcorrection		
 	
@@ -1293,8 +1390,8 @@ def MonteCarloFixedStrikeLookBackPutWithGreeks(S, K, r, sigma, t, T, Smintodate=
 	
 	#### Calculate Theta = -dV/dt (partial)  #######
 	
-	MinPrice_array_smaller_t = full_terminal_price_df['MinPrice_smaller_t'].to_numpy()
-	MinPrice_array_larger_t = full_terminal_price_df['MinPrice_larger_t'].to_numpy()
+	MinPrice_array_smaller_t = np.concatenate(( full_terminal_price_df['MinPrice_smaller_t'].to_numpy(), full_terminal_price_df['MinPrice_smaller_t_AT'].to_numpy() ))
+	MinPrice_array_larger_t = np.concatenate(( full_terminal_price_df['MinPrice_larger_t'].to_numpy(), full_terminal_price_df['MinPrice_larger_t_AT'].to_numpy() )) 
 	MinPrice_array_smaller_t = MinPrice_array_smaller_t*BGKcorrection
 	MinPrice_array_larger_t = MinPrice_array_larger_t*BGKcorrection	
 
@@ -1317,8 +1414,8 @@ def MonteCarloFixedStrikeLookBackPutWithGreeks(S, K, r, sigma, t, T, Smintodate=
 	
 	#### Calculate Rho = dV/dr (partial)   #########
 	
-	MinPrice_array_smaller_r = full_terminal_price_df['MinPrice_smaller_r'].to_numpy()
-	MinPrice_array_larger_r = full_terminal_price_df['MinPrice_larger_r'].to_numpy()
+	MinPrice_array_smaller_r = np.concatenate(( full_terminal_price_df['MinPrice_smaller_r'].to_numpy(), full_terminal_price_df['MinPrice_smaller_r_AT'].to_numpy() ))
+	MinPrice_array_larger_r = np.concatenate(( full_terminal_price_df['MinPrice_larger_r'].to_numpy(), full_terminal_price_df['MinPrice_larger_r_AT'].to_numpy() ))
 	MinPrice_array_smaller_r = MinPrice_array_smaller_r*BGKcorrection
 	MinPrice_array_larger_r = MinPrice_array_larger_r*BGKcorrection	
 

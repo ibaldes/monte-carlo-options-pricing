@@ -30,21 +30,23 @@ Code for Monte-Carlo pricing of options assuming the Black-Scholes model and ris
 1. Analytic pricing for Look Back Puts and Calls with Floating or Fixed Strikes  (greeks: calculated using finite difference).
 2. Monte-Carlo pricing for Look Back Puts and Calls with Floating or Fixed Strikes. These also return standard errors of the prices and greeks. (To do: improve estimates of the greeks using more advanced techniques)
 
+* LookBackAntithetic.py is as the above, but with Antithetic Variates for the Monte-Carlo.
+
 * PricingExample.py calls the functions from EuropeanVanilla.py and EuropeanBarrier.py showing some example prices.
 
-* ScalingWithNsimulations_CallOption.py calls functions from EuropeanVanilla.py and shows the convergence of the Monte-Carlo calculation of the VANILLA call option price and greeks with the analytic result for large n_simulations. (To do: investigate behaviour of Gamma at small values of n_simulations.)
+* ScalingWithNsimulations_CallOption.py calls functions from EuropeanVanilla.py and EuropeanVanillaAntithetic.py and shows the convergence of the Monte-Carlo calculation of the VANILLA call option price and greeks with the analytic result for large n_simulations. 
 
-* ScalingWithNsimulations_PutOption.py calls functions from EuropeanVanilla.py and shows the convergence of the Monte-Carlo calculation of the VANILLA put option price and greeks with the analytic result for large n_simulations. (To do: investigate behaviour of Gamma at small values of n_simulations.)
+* ScalingWithNsimulations_PutOption.py calls functions from EuropeanVanilla.py and EuropeanVanillaAntithetic.py  and shows the convergence of the Monte-Carlo calculation of the VANILLA put option price and greeks with the analytic result for large n_simulations.
 
-* ScalingWithNsimulations_CallOption_Barrier.py calls functions from EuropeanBarrier.py and shows the convergence of the Monte-Carlo calculation of the BARRIER call option price and greeks with the analytic result for large n_simulations. (Note estimates of the Greeks are still to be improved).
+* ScalingWithNsimulations_CallOption_Barrier.py calls functions from EuropeanBarrier.py and EuropeanBarrierAntithetic.py and shows the convergence of the Monte-Carlo calculation of the BARRIER call option price and greeks with the analytic result for large n_simulations. (Note estimates of the Greeks, particularly Gamma, are still to be improved).
 
-* ScalingWithNsimulations_PutOption_Barrier.py calls functions from EuropeanBarrier.py and shows the convergence of the Monte-Carlo calculation of the BARRIER put option price and greeks with the analytic result for large n_simulations. (Note estimates of the Greeks are still to be improved).
+* ScalingWithNsimulations_PutOption_Barrier.py calls functions from EuropeanBarrier.py and EuropeanBarrierAntithetic.py and shows the convergence of the Monte-Carlo calculation of the BARRIER put option price and greeks with the analytic result for large n_simulations. (Note estimates of the Greeks, particularly Gamma, are still to be improved).
 
 * ScalingWithNsimulations_LookBackCall_FloatingStrike.py calls functions from LookBack.py and shows the convergence of the Monte-Carlo calculation of the Look Back Floating strike call option price with the analytic result. (Some of the greeks are not matching the analytic result. To be improved.)
 
 * ScalingWithNsimulations_LookBackPut_FloatingStrike.py calls functions from LookBack.py and shows the convergence of the Monte-Carlo calculation of the Look Back Floating strike put option price with the analytic result. (Some of the greeks are not matching the analytic result. To be improved.)
 
-* ScalingWithNsimulations_LookBackCall_FixedStrike.py calls functions from LookBack.py and shows the convergence of the Monte-Carlo calculation of the Look Back fixed strike call option price with the analytic result. (Some of the greeks are not matching the analytic result. To be improved.)
+* ScalingWithNsimulations_LookBackCall_FixedStrike.py calls functions from LookBack.py and LookBackAntithetic.py and shows the convergence of the Monte-Carlo calculation of the Look Back fixed strike call option price with the analytic result. (Some of the greeks are not matching the analytic result. To be improved.)
 
 * ScalingWithNsimulations_LookBackCall_FixedStrike.py calls functions from LookBack.py and shows the convergence of the Monte-Carlo calculation of the Look Back fixed strike call option price with the analytic result. (Some of the greeks are not matching the analytic result. To be improved.)
 

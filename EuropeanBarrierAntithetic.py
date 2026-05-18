@@ -753,6 +753,7 @@ def MonteCarloKnockInEuropeanCallWithGreeks(S, K, r, sigma, t, T, KnockInBarrier
 		full_terminal_price_df['KnockInFilter_larger_t'] = full_terminal_price_df['MinPrice_larger_t'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
 		full_terminal_price_df['KnockInFilter_smaller_r'] = full_terminal_price_df['MinPrice_smaller_r'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
 		full_terminal_price_df['KnockInFilter_larger_r'] = full_terminal_price_df['MinPrice_larger_r'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)	
+		
 		full_terminal_price_df['KnockInFilter_AT'] = full_terminal_price_df['MinPrice_AT'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
 		full_terminal_price_df['KnockInFilter_smaller_S_AT'] = full_terminal_price_df['MinPrice_smaller_S_AT'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
 		full_terminal_price_df['KnockInFilter_larger_S_AT'] = full_terminal_price_df['MinPrice_larger_S_AT'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
