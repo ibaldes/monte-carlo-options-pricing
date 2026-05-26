@@ -6,10 +6,21 @@ from scipy import stats
 from scipy.stats import norm
 from multiprocessing import Pool
 
-import LookBack as lb
-import LookBackAntithetic as at
+import sys
+import os
 
-### Compares the Monte-Carlo of the Look Back Floating Strike Put with the Analytic  Formula ####
+# Get the path to the parent directory
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+
+# Add it to the system path
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+
+
+from options_benchmark import LookBack as lb
+from options_antithetic import LookBackAntithetic as at
+
+### Compares the Monte-Carlo of the Look Back Fixed Strike Call with the Analytic  Formula ####
 ### Generates a plot, showing the convergence and error estimate ################################
 
 ##################################################################################
@@ -24,14 +35,15 @@ def main():
 	print('\n')	
 	print ("Starting simulations...\n")
 
-	NSim_array = np.array([10, 20, 40, 70, 100, 200, 400, 700, 1e3, 2e3, 4e3, 7e3, 1e4, 2e4, 4e4, 7e4, 1e5, 4e5, 7e5, 1e6]) ##### array of n_simulations values to scan over
+	NSim_array = np.array([10, 20, 40, 70, 100, 200, 400, 700, 1e3, 2e3, 4e3, 7e3, 1e4, 2e4, 4e4, 7e4, 1e5, 4e5, 7e5, 1e6]) ##### array of n_simulations values to scan over	
 	n_examples = len(NSim_array)
-	Output_array = np.zeros((n_examples, 12)) # Output array: MonteCarloFixedStrikeLookBackPutWithGreeks function has an output of length 12
-	Output_array_2 = np.zeros((n_examples, 12)) # Output array: MonteCarloFixedStrikeLookBackPutWithGreeks function has an output of length 12
+	Output_array = np.zeros((n_examples, 12)) # Output array: MonteCarloFixedStrikeLookBackCallWithGreeks function has an output of length 12
+	Output_array_2 = np.zeros((n_examples, 12)) # Output array: MonteCarloFixedStrikeLookBackCallWithGreeks function has an output of length 12	
 	Output_array_3 = np.zeros((n_examples, 12)) # Output array: MonteCarloFixedStrikeLookBackCallWithGreeks function has an output of length 12		
 
 	### Choose some example values for our Option
 	Stockprice = 80
+	Strikeprice = 85
 	interest = 0.05
 	volatility = 0.4
 	timenow = 0
@@ -43,26 +55,26 @@ def main():
 
 	for i in range(0,n_examples):
 		print(f'Starting example with {NSim_array[i]} simulations and n_steps = {n_steps_1}\n')
-		Output_array[i, :] = lb.MonteCarloFloatingStrikeLookBackPutWithGreeks(Stockprice, interest, volatility, timenow, timeatmaturity, Smaxtodate=None, n_steps=n_steps_1, n_simulations=NSim_array[i])
+		Output_array[i, :] = lb.MonteCarloFixedStrikeLookBackCallWithGreeks(Stockprice, Strikeprice, interest, volatility, timenow, timeatmaturity, Smaxtodate=None, n_steps=n_steps_1, n_simulations=NSim_array[i])
 
 	print(f'Prices and Greeks using Monte-Carlo for the different n_simulations with n_steps = {n_steps_1} are:\n', Output_array)
 
 	for i in range(0,n_examples):
 		print(f'\nStarting example with {NSim_array[i]} simulations and n_steps = {n_steps_2}\n')
-		Output_array_2[i, :] = lb.MonteCarloFloatingStrikeLookBackPutWithGreeks(Stockprice, interest, volatility, timenow, timeatmaturity, Smaxtodate=None, n_steps=n_steps_2, n_simulations=NSim_array[i])
+		Output_array_2[i, :] = lb.MonteCarloFixedStrikeLookBackCallWithGreeks(Stockprice, Strikeprice, interest, volatility, timenow, timeatmaturity, Smaxtodate=None, n_steps=n_steps_2, n_simulations=NSim_array[i])
 
 	print(f'\nPrices and Greeks using Monte-Carlo for the different n_simulations with n_steps = {n_steps_2} are:\n', Output_array_2)
-	
 
 	for i in range(0,n_examples):
 		print(f'\nStarting example with {NSim_array[i]} simulations, n_steps = {n_steps_2}, and Antithetic Variates\n')
-		Output_array_3[i, :] = at.MonteCarloFloatingStrikeLookBackPutWithGreeks(Stockprice, interest, volatility, timenow, timeatmaturity, Smaxtodate=None, n_steps=n_steps_2, n_simulations=NSim_array[i])
+		Output_array_3[i, :] = at.MonteCarloFixedStrikeLookBackCallWithGreeks(Stockprice, Strikeprice, interest, volatility, timenow, timeatmaturity, Smaxtodate=None, n_steps=n_steps_2, n_simulations=NSim_array[i])
 
 	print(f'\nPrices and Greeks using Monte-Carlo for the different n_simulations with n_steps = {n_steps_2} and Antithetic Variates are:\n', Output_array_3)
 		
 
-	Analytic_array = np.array(lb.AnalyticFloatingStrikeLookBackPutWithGreeks(Stockprice, interest, volatility, timenow, timeatmaturity, Smaxtodate=None))
+	Analytic_array = np.array(lb.AnalyticFixedStrikeLookBackCallWithGreeks(Stockprice, Strikeprice, interest, volatility, timenow, timeatmaturity, Smaxtodate=None))
 	print('\nPrices and Greeks using the analytic formula are:\n', Analytic_array)
+
 
 	AnalyticPrice = Analytic_array[0]
 	MonteCarloPrice_array = Output_array[:, 0]
@@ -170,6 +182,7 @@ def main():
 	MonteCarloRho_array_upper_3 = MonteCarloRho_array_3+multiplcation_factor*MonteCarloRho_StdErr_array_3
 	MonteCarloRho_array_lower_3 = MonteCarloRho_array_3-multiplcation_factor*MonteCarloRho_StdErr_array_3	
 	
+	
 	##### make plots #########
 		
 	plt.figure(figsize=(8, 6))
@@ -178,34 +191,34 @@ def main():
 	plt.plot(NSim_array, MonteCarloPrice_array_2, '-o', label=f'Monte Carlo Price n_steps = {n_steps_2}', c='C1')	
 	plt.fill_between(NSim_array, MonteCarloPrice_array_lower_2, MonteCarloPrice_array_upper_2, alpha=0.3, label=f'Naive {CIpercentage}% CI  n_steps = {n_steps_2}')
 	plt.plot(NSim_array, MonteCarloPrice_array_3, '-o', label=f'Monte Carlo Price Antithetic n_steps = {n_steps_2}', c='C2')	
-	plt.fill_between(NSim_array, MonteCarloPrice_array_lower_3, MonteCarloPrice_array_upper_3, alpha=0.3, label=f'Naive {CIpercentage}% CI Antithetic n_steps = {n_steps_2}')
+	plt.fill_between(NSim_array, MonteCarloPrice_array_lower_3, MonteCarloPrice_array_upper_3, alpha=0.3, label=f'Naive {CIpercentage}% CI Antithetic n_steps = {n_steps_2}')	
 	plt.axhline(y=AnalyticPrice, color='r', linestyle='--', label='Analytic Price')
 	plt.xscale('log') 
-	plt.title(f'Price of Floating Strike Look Back Put Option (S={Stockprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
+	plt.title(f'Price of Fixed Strike Look Back Call Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel('Price ($)')
-	plt.legend(loc='upper right')
+	plt.legend(loc='lower right')
 	plt.grid(True)
 	plt.xlim(1e1, 1e7)
-	plt.savefig("./plots/LookBackPutFloatingStrike/MonteCarloPriceConvergence_LookBackPut_FloatingStrike.jpg")
+	plt.savefig("../plots/LookBackCallFixedStrike/MonteCarloPriceConvergence_LookBackCall_FixedStrike.jpg")
 	plt.clf()
 
 	plt.figure(figsize=(8, 6))
 	plt.plot(NSim_array, MonteCarloDelta_array, '-o', label=fr'Monte Carlo $\Delta$ n_steps = {n_steps_1}', c='C0')
 	plt.fill_between(NSim_array, MonteCarloDelta_array_lower, MonteCarloDelta_array_upper, alpha=0.3, label=f'Naive {CIpercentage}% CI n_steps = {n_steps_1}')
 	plt.plot(NSim_array, MonteCarloDelta_array_2, '-o', label=fr'Monte Carlo $\Delta$ n_steps = {n_steps_2}', c='C1')
-	plt.fill_between(NSim_array, MonteCarloDelta_array_lower_2, MonteCarloDelta_array_upper_2, alpha=0.3, label=f'Naive {CIpercentage}% CI n_steps = {n_steps_2}')
+	plt.fill_between(NSim_array, MonteCarloDelta_array_lower_2, MonteCarloDelta_array_upper_2, alpha=0.3, label=f'Naive {CIpercentage}% CI n_steps = {n_steps_2}')	
 	plt.plot(NSim_array, MonteCarloDelta_array_3, '-o', label=fr'Monte Carlo $\Delta$ Antithetic n_steps = {n_steps_2}', c='C2')
 	plt.fill_between(NSim_array, MonteCarloDelta_array_lower_3, MonteCarloDelta_array_upper_3, alpha=0.3, label=f'Naive {CIpercentage}% CI Antithetic n_steps = {n_steps_2}')		
 	plt.axhline(y=AnalyticDelta, color='r', linestyle='--', label=r'Analytic $\Delta$')
 	plt.xscale('log') 
-	plt.title(f'Delta of Floating Strike Look Back Put Option (S={Stockprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
+	plt.title(f'Delta of Fixed Strike Look Back Call Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel(r'$\Delta$')
-	plt.legend(loc='upper right')
+	plt.legend(loc='lower right')
 	plt.grid(True)
 	plt.xlim(1e1, 1e7)
-	plt.savefig("./plots/LookBackPutFloatingStrike/MonteCarloDeltaConvergence_LookBackPut_FloatingStrike.jpg")
+	plt.savefig("../plots/LookBackCallFixedStrike/MonteCarloDeltaConvergence_LookBackCall_FixedStrike.jpg")
 	plt.clf()
 
 	plt.figure(figsize=(8, 6))
@@ -214,16 +227,16 @@ def main():
 	plt.plot(NSim_array, MonteCarloGamma_array_2, '-o', label=fr'Monte Carlo $\Gamma$ n_steps = {n_steps_2}', c='C1')
 	plt.fill_between(NSim_array, MonteCarloGamma_array_lower_2, MonteCarloGamma_array_upper_2, alpha=0.3, label=f'Naive {CIpercentage}% CI n_steps = {n_steps_2}')
 	plt.plot(NSim_array, MonteCarloGamma_array_3, '-o', label=fr'Monte Carlo $\Gamma$ Antithetic n_steps = {n_steps_2}', c='C2')
-	plt.fill_between(NSim_array, MonteCarloGamma_array_lower_3, MonteCarloGamma_array_upper_3, alpha=0.3, label=f'Naive {CIpercentage}% CI Antithetic n_steps = {n_steps_2}')
-	plt.axhline(y=AnalyticGamma, color='r', linestyle='--', label=r'Analytic $\Gamma$')		
+	plt.fill_between(NSim_array, MonteCarloGamma_array_lower_3, MonteCarloGamma_array_upper_3, alpha=0.3, label=f'Naive {CIpercentage}% CI Antithetic n_steps = {n_steps_2}')			
+	plt.axhline(y=AnalyticGamma, color='r', linestyle='--', label=r'Analytic $\Gamma$')
 	plt.xscale('log') 
-	plt.title(f'Gamma of Floating Strike Look Back Put Option (S={Stockprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
+	plt.title(f'Gamma of Fixed Strike Look Back Call Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel(r'$\Gamma$ $(\$)^{-1}$')
-	plt.legend(loc='lower right')
+	plt.legend(loc='upper right')
 	plt.grid(True)
 	plt.xlim(1e1, 1e7)
-	plt.savefig("./plots/LookBackPutFloatingStrike/MonteCarloGammaConvergence_LookBackPut_FloatingStrike.jpg")
+	plt.savefig("../plots/LookBackCallFixedStrike/MonteCarloGammaConvergence_LookBackCall_FixedStrike.jpg")
 	plt.clf()		
 	
 	plt.figure(figsize=(8, 6))
@@ -232,16 +245,16 @@ def main():
 	plt.plot(NSim_array, MonteCarloVega_array_2, '-o', label=fr'Monte Carlo Vega n_steps = {n_steps_2}', c='C1')
 	plt.fill_between(NSim_array, MonteCarloVega_array_lower_2, MonteCarloVega_array_upper_2, alpha=0.3, label=f'Naive {CIpercentage}% CI n_steps ={n_steps_2}')
 	plt.plot(NSim_array, MonteCarloVega_array_3, '-o', label=fr'Monte Carlo Vega Antithetic n_steps = {n_steps_2}', c='C2')
-	plt.fill_between(NSim_array, MonteCarloVega_array_lower_3, MonteCarloVega_array_upper_3, alpha=0.3, label=f'Naive {CIpercentage}% CI Antithetic n_steps ={n_steps_2}')	
+	plt.fill_between(NSim_array, MonteCarloVega_array_lower_3, MonteCarloVega_array_upper_3, alpha=0.3, label=f'Naive {CIpercentage}% CI Antithetic n_steps ={n_steps_2}')			
 	plt.axhline(y=AnalyticVega, color='r', linestyle='--', label=r'Analytic Vega')
 	plt.xscale('log') 
-	plt.title(f'Vega of Floating Strike Look Back Put Option (S={Stockprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
+	plt.title(f'Vega of Fixed Strike Look Back Call Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel(r'Vega $( \$ \cdot \sqrt{\mathrm{year}} )$')
-	plt.legend(loc='upper right')
+	plt.legend(loc='lower right')
 	plt.grid(True)
 	plt.xlim(1e1, 1e7)
-	plt.savefig("./plots/LookBackPutFloatingStrike/MonteCarloVegaConvergence_LookBackPut_FloatingStrike.jpg")
+	plt.savefig("../plots/LookBackCallFixedStrike/MonteCarloVegaConvergence_LookBackCall_FixedStrike.jpg")
 	plt.clf()
 	
 	plt.figure(figsize=(8, 6))
@@ -250,16 +263,16 @@ def main():
 	plt.plot(NSim_array, MonteCarloTheta_array_2, '-o', label=fr'Monte Carlo $\Theta$ n_steps ={n_steps_2}', c='C1')
 	plt.fill_between(NSim_array, MonteCarloTheta_array_lower_2, MonteCarloTheta_array_upper_2, alpha=0.3, label=f'Naive {CIpercentage}% CI n_steps ={n_steps_2}')
 	plt.plot(NSim_array, MonteCarloTheta_array_3, '-o', label=fr'Monte Carlo $\Theta$ Antithetic n_steps ={n_steps_2}', c='C2')
-	plt.fill_between(NSim_array, MonteCarloTheta_array_lower_3, MonteCarloTheta_array_upper_3, alpha=0.3, label=f'Naive {CIpercentage}% CI Antithetic n_steps ={n_steps_2}')
+	plt.fill_between(NSim_array, MonteCarloTheta_array_lower_3, MonteCarloTheta_array_upper_3, alpha=0.3, label=f'Naive {CIpercentage}% CI Antithetic n_steps ={n_steps_2}')		
 	plt.axhline(y=AnalyticTheta, color='r', linestyle='--', label=r'Analytic $\Theta$')
 	plt.xscale('log') 
-	plt.title(f'Theta of Floating Strike Look Back Put Option (S={Stockprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
+	plt.title(f'Theta of Fixed Strike Look Back Call Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel(r'$\Theta$ $( \$ / \mathrm{year} )$')
-	plt.legend(loc='upper right')
+	plt.legend(loc='lower right')
 	plt.grid(True)
 	plt.xlim(1e1, 1e7)
-	plt.savefig("./plots/LookBackPutFloatingStrike/MonteCarloThetaConvergence_LookBackPut_FloatingStrike.jpg")
+	plt.savefig("../plots/LookBackCallFixedStrike/MonteCarloThetaConvergence_LookBackCall_FixedStrike.jpg")
 	plt.clf()
 
 	plt.figure(figsize=(8, 6))
@@ -268,16 +281,16 @@ def main():
 	plt.plot(NSim_array, MonteCarloRho_array_2, '-o', label=fr'Monte Carlo $\rho$ n_steps ={n_steps_2}', c='C1')
 	plt.fill_between(NSim_array, MonteCarloRho_array_lower_2, MonteCarloRho_array_upper_2, alpha=0.3, label=f'Naive {CIpercentage}% CI n_steps ={n_steps_2}')
 	plt.plot(NSim_array, MonteCarloRho_array_3, '-o', label=fr'Monte Carlo $\rho$ Antithetic n_steps ={n_steps_2}', c='C2')
-	plt.fill_between(NSim_array, MonteCarloRho_array_lower_3, MonteCarloRho_array_upper_3, alpha=0.3, label=f'Naive {CIpercentage}% CI Antithetic n_steps ={n_steps_2}')	
+	plt.fill_between(NSim_array, MonteCarloRho_array_lower_3, MonteCarloRho_array_upper_3, alpha=0.3, label=f'Naive {CIpercentage}% CI Antithetic n_steps ={n_steps_2}')		
 	plt.axhline(y=AnalyticRho, color='r', linestyle='--', label=r'Analytic $\rho$')
 	plt.xscale('log') 
-	plt.title(f'Rho of Floating Strike Look Back Put Option (S={Stockprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
+	plt.title(f'Rho of Fixed Strike Look Back Call Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel(r'$\rho$ $( \$ \cdot \mathrm{year} )$')
 	plt.legend(loc='lower right')
 	plt.grid(True)
 	plt.xlim(1e1, 1e7)
-	plt.savefig("./plots/LookBackPutFloatingStrike/MonteCarloRhoConvergence_LookBackPut_FloatingStrike.jpg")
+	plt.savefig("../plots/LookBackCallFixedStrike/MonteCarloRhoConvergence_LookBackCall_FixedStrike.jpg")
 	plt.clf()
 
 	print('Generated plots saved in plots folder.')

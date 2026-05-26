@@ -6,8 +6,19 @@ from scipy import stats
 from scipy.stats import norm
 from multiprocessing import Pool
 
-import LookBack as lb
-import LookBackAntithetic as at
+import sys
+import os
+
+# Get the path to the parent directory
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+
+# Add it to the system path
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+
+
+from options_benchmark import LookBack as lb
+from options_antithetic import LookBackAntithetic as at
 
 ### Compares the Monte-Carlo of the Look Back Floating Strike Call with the Analytic  Formula ####
 ### Generates a plot, showing the convergence and error estimate ################################
@@ -190,7 +201,7 @@ def main():
 	plt.legend(loc='lower right')
 	plt.grid(True)
 	plt.xlim(1e1, 1e7)
-	plt.savefig("./plots/LookBackCallFloatingStrike/MonteCarloPriceConvergence_LookBackCall_FloatingStrike.jpg")
+	plt.savefig("../plots/LookBackCallFloatingStrike/MonteCarloPriceConvergence_LookBackCall_FloatingStrike.jpg")
 	plt.clf()
 
 	plt.figure(figsize=(8, 6))
@@ -208,7 +219,7 @@ def main():
 	plt.legend(loc='lower right')
 	plt.grid(True)
 	plt.xlim(1e1, 1e7)
-	plt.savefig("./plots/LookBackCallFloatingStrike/MonteCarloDeltaConvergence_LookBackCall_FloatingStrike.jpg")
+	plt.savefig("../plots/LookBackCallFloatingStrike/MonteCarloDeltaConvergence_LookBackCall_FloatingStrike.jpg")
 	plt.clf()
 
 	plt.figure(figsize=(8, 6))
@@ -226,7 +237,7 @@ def main():
 	plt.legend(loc='upper right')
 	plt.grid(True)
 	plt.xlim(1e1, 1e7)
-	plt.savefig("./plots/LookBackCallFloatingStrike/MonteCarloGammaConvergence_LookBackCall_FloatingStrike.jpg")
+	plt.savefig("../plots/LookBackCallFloatingStrike/MonteCarloGammaConvergence_LookBackCall_FloatingStrike.jpg")
 	plt.clf()		
 	
 	plt.figure(figsize=(8, 6))
@@ -244,7 +255,7 @@ def main():
 	plt.legend(loc='lower right')
 	plt.grid(True)
 	plt.xlim(1e1, 1e7)
-	plt.savefig("./plots/LookBackCallFloatingStrike/MonteCarloVegaConvergence_LookBackCall_FloatingStrike.jpg")
+	plt.savefig("../plots/LookBackCallFloatingStrike/MonteCarloVegaConvergence_LookBackCall_FloatingStrike.jpg")
 	plt.clf()
 	
 	plt.figure(figsize=(8, 6))
@@ -262,7 +273,7 @@ def main():
 	plt.legend(loc='lower right')
 	plt.grid(True)
 	plt.xlim(1e1, 1e7)
-	plt.savefig("./plots/LookBackCallFloatingStrike/MonteCarloThetaConvergence_LookBackCall_FloatingStrike.jpg")
+	plt.savefig("../plots/LookBackCallFloatingStrike/MonteCarloThetaConvergence_LookBackCall_FloatingStrike.jpg")
 	plt.clf()
 
 	plt.figure(figsize=(8, 6))
@@ -280,7 +291,7 @@ def main():
 	plt.legend(loc='lower right')
 	plt.grid(True)
 	plt.xlim(1e1, 1e7)
-	plt.savefig("./plots/LookBackCallFloatingStrike/MonteCarloRhoConvergence_LookBackCall_FloatingStrike.jpg")
+	plt.savefig("../plots/LookBackCallFloatingStrike/MonteCarloRhoConvergence_LookBackCall_FloatingStrike.jpg")
 	plt.clf()
 
 	print('Generated plots saved in plots folder.')

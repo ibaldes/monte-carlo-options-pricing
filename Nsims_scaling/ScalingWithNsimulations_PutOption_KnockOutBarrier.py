@@ -6,11 +6,22 @@ from scipy import stats
 from scipy.stats import norm
 from multiprocessing import Pool
 
-import EuropeanVanilla as ev
-import EuropeanVanillaAntithetic as at
+import sys
+import os
 
-### Compares the Monte-Carlo of the Vanilla European with the Analytic Black-Scholes Formula ####
+# Get the path to the parent directory
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+
+# Add it to the system path
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+
+from options_benchmark import EuropeanBarrier as eb
+from options_antithetic import EuropeanBarrierAntithetic as at
+
+### Compares the Monte-Carlo of the Barrier Put Option with the Analytic Formula ####
 ### Generates a plot, showing the convergence and error estimate ################################
+
 
 ##################################################################################
 ##################################################################################
@@ -24,10 +35,11 @@ def main():
 	print('\n')	
 	print ("Starting simulations...\n")
 
-	NSim_array = np.array([10, 20, 40, 70, 100, 200, 400, 700, 1e3, 2e3, 4e3, 7e3, 1e4, 2e4, 4e4, 7e4, 1e5, 2e5, 4e5, 7e5, 1e6, 4e6, 1e7]) ##### array of n_simulations values to scan over
+	NSim_array = np.array([10, 20, 40, 70, 100, 200, 400, 700, 1e3, 2e3, 4e3, 7e3, 1e4, 2e4, 4e4, 7e4, 1e5, 2e5, 4e5, 7e5, 1e6, 5e6])
+
 	n_examples = len(NSim_array)
-	Output_array = np.zeros((n_examples, 12)) # Output array: BlackScholesVanillaEuropeanPutWithGreeks function has an output of length 12
-	Output_array_2 = np.zeros((n_examples, 12)) # Output array: BlackScholesVanillaEuropeanPutWithGreeks function has an output of length 12	
+	Output_array = np.zeros((n_examples, 12)) # Output array: MonteCarloKnockOutEuropeanPutWithGreeks function has an output of length 12
+	Output_array_2 = np.zeros((n_examples, 12)) # Output array: MonteCarloKnockOutEuropeanPutWithGreeks function has an output of length 12	
 
 	### Choose some example values for our Option
 	Stockprice = 80
@@ -35,25 +47,26 @@ def main():
 	interest = 0.05
 	volatility = 0.4
 	timenow = 0
-	timeatmaturity = 0.25 
+	timeatmaturity = 0.25
+	KnockOutBarrier = 65 	 
 
 	### Generate the Monte-Carlo prices and Greeks. Note we can increase n_steps to get a better theta estimate (current implementation using plus/minus one step to calculate derivative).
 
 	for i in range(0,n_examples):
-		print(f'\nStarting example with {NSim_array[i]} simulations\n')
-		Output_array[i, :] = ev.MonteCarloVanillaEuropeanPutWithGreeks(Stockprice, Strikeprice, interest, volatility, timenow, timeatmaturity, n_steps=100, n_simulations=NSim_array[i])
-
+		print(f'Starting example with {NSim_array[i]} simulations\n')
+		Output_array[i, :] = eb.MonteCarloKnockOutEuropeanPutWithGreeks(Stockprice, Strikeprice, interest, volatility, timenow, timeatmaturity, KnockOutBarrier, n_steps=100, n_simulations=NSim_array[i])
+		
 	print('Prices and Greeks using Monte-Carlo for the different n_simulations are:\n', Output_array)
-	
+
+
 	for i in range(0,n_examples):
 		print(f'\nStarting example with {NSim_array[i]} simulations and Antithetic Variates\n')
-		Output_array_2[i, :] = at.MonteCarloVanillaEuropeanPutWithGreeks(Stockprice, Strikeprice, interest, volatility, timenow, timeatmaturity, n_steps=100, n_simulations=NSim_array[i])
+		Output_array_2[i, :] = at.MonteCarloKnockOutEuropeanPutWithGreeks(Stockprice, Strikeprice, interest, volatility, timenow, timeatmaturity, KnockOutBarrier, n_steps=100, n_simulations=NSim_array[i])
 
 	print('\nPrices and Greeks using Monte-Carlo for the different n_simulations and Antithetic Variates are:\n', Output_array_2)
 
-	Analytic_array = np.array(ev.BlackScholesVanillaEuropeanPutWithGreeks(Stockprice, Strikeprice, interest, volatility, timenow, timeatmaturity))
+	Analytic_array = np.array(eb.AnalyticBlackScholesKnockOutPutWithGreeks(Stockprice, Strikeprice, interest, volatility, timenow, timeatmaturity, KnockOutBarrier))
 	print('\nPrices and Greeks using the analytic formula are:\n', Analytic_array)
-
 
 	AnalyticPrice = Analytic_array[0]
 	MonteCarloPrice_array = Output_array[:, 0]
@@ -148,29 +161,29 @@ def main():
 	plt.fill_between(NSim_array, MonteCarloPrice_array_lower_2, MonteCarloPrice_array_upper_2, alpha=0.3, label=f'Naive {CIpercentage}% CI  Antithetic')
 	plt.axhline(y=AnalyticPrice, color='r', linestyle='--', label='Analytic Price')
 	plt.xscale('log') 
-	plt.title(f'Price of Put Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
+	plt.title(f'Price of Knock-Out Put Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity}, H={KnockOutBarrier})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel('Price ($)')
-	plt.legend(loc='lower right')
+	plt.legend(loc='upper right')
 	plt.grid(True)
 	plt.xlim(1e1, 1e7)
-	plt.savefig("./plots/PutOptionConvergence/MonteCarloPriceConvergence_PutOption.jpg")
+	plt.savefig("../plots/BarrierKnockOutPutOptionConvergence/MonteCarloPriceConvergence_BarrierPutOption.jpg")
 	plt.clf()
 
 	plt.figure(figsize=(8, 6))
 	plt.plot(NSim_array, MonteCarloDelta_array, '-o', label=r'Monte Carlo $\Delta$', c='C0')
 	plt.fill_between(NSim_array, MonteCarloDelta_array_lower, MonteCarloDelta_array_upper, alpha=0.3, label=f'Naive {CIpercentage}% CI')
 	plt.plot(NSim_array, MonteCarloDelta_array_2, '-o', label=fr'Monte Carlo $\Delta$ Antithetic', c='C1')
-	plt.fill_between(NSim_array, MonteCarloDelta_array_lower_2, MonteCarloDelta_array_upper_2, alpha=0.3, label=f'Naive {CIpercentage}% CI Antithetic')		
+	plt.fill_between(NSim_array, MonteCarloDelta_array_lower_2, MonteCarloDelta_array_upper_2, alpha=0.3, label=f'Naive {CIpercentage}% CI Antithetic')
 	plt.axhline(y=AnalyticDelta, color='r', linestyle='--', label=r'Analytic $\Delta$')
 	plt.xscale('log') 
-	plt.title(f'Delta of Put Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
+	plt.title(f'Delta of Knock-Out Put Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity}, H={KnockOutBarrier})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel(r'$\Delta$')
-	plt.legend(loc='lower right')
+	plt.legend(loc='upper right')
 	plt.grid(True)
 	plt.xlim(1e1, 1e7)
-	plt.savefig("./plots/PutOptionConvergence/MonteCarloDeltaConvergence_PutOption.jpg")
+	plt.savefig("../plots/BarrierKnockOutPutOptionConvergence/MonteCarloDeltaConvergence_BarrierPutOption.jpg")
 	plt.clf()
 
 	plt.figure(figsize=(8, 6))
@@ -180,29 +193,46 @@ def main():
 	plt.fill_between(NSim_array, MonteCarloGamma_array_lower_2, MonteCarloGamma_array_upper_2, alpha=0.3, label=f'Naive {CIpercentage}% CI Antithetic')
 	plt.axhline(y=AnalyticGamma, color='r', linestyle='--', label=r'Analytic $\Gamma$')
 	plt.xscale('log') 
-	plt.title(f'Gamma of Put Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
+	plt.title(f'Gamma of Knock-Out Put Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity}, H={KnockOutBarrier})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel(r'$\Gamma$ $(\$)^{-1}$')
 	plt.legend(loc='lower right')
 	plt.grid(True)
 	plt.xlim(1e1, 1e7)
-	plt.savefig("./plots/PutOptionConvergence/MonteCarloGammaConvergence_PutOption.jpg")
-	plt.clf()		
+	plt.savefig("../plots/BarrierKnockOutPutOptionConvergence/MonteCarloGammaConvergence_BarrierPutOption.jpg")
+	plt.clf()
+
+	plt.figure(figsize=(8, 6))
+	plt.plot(NSim_array, MonteCarloGamma_array, '-o', label=r'Monte Carlo $\Gamma$', c='C0')
+	plt.fill_between(NSim_array, MonteCarloGamma_array_lower, MonteCarloGamma_array_upper, alpha=0.3, label=f'Naive {CIpercentage}% CI')
+	plt.plot(NSim_array, MonteCarloGamma_array_2, '-o', label=fr'Monte Carlo $\Gamma$  Antithetic', c='C1')
+	plt.fill_between(NSim_array, MonteCarloGamma_array_lower_2, MonteCarloGamma_array_upper_2, alpha=0.3, label=f'Naive {CIpercentage}% CI Antithetic')
+	plt.axhline(y=AnalyticGamma, color='r', linestyle='--', label=r'Analytic $\Gamma$')
+	plt.xscale('log') 
+	plt.title(f'Gamma of Knock-Out Put Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity}, H={KnockOutBarrier})')
+	plt.xlabel('Number of Simulations')
+	plt.ylabel(r'$\Gamma$ $(\$)^{-1}$')
+	plt.legend(loc='lower right')
+	plt.grid(True)
+	plt.xlim(1e1, 1e7)
+	plt.ylim(-1, 1)	
+	plt.savefig("../plots/BarrierKnockOutPutOptionConvergence/MonteCarloGammaConvergence_BarrierPutOption_ZoomedIn.jpg")
+	plt.clf()			
 	
 	plt.figure(figsize=(8, 6))
 	plt.plot(NSim_array, MonteCarloVega_array, '-o', label=r'Monte Carlo Vega', c='C0')
 	plt.fill_between(NSim_array, MonteCarloVega_array_lower, MonteCarloVega_array_upper, alpha=0.3, label=f'Naive {CIpercentage}% CI')
 	plt.plot(NSim_array, MonteCarloVega_array_2, '-o', label=fr'Monte Carlo Vega Antithetic', c='C1')
-	plt.fill_between(NSim_array, MonteCarloVega_array_lower_2, MonteCarloVega_array_upper_2, alpha=0.3, label=f'Naive {CIpercentage}% CI Antithetic')	
+	plt.fill_between(NSim_array, MonteCarloVega_array_lower_2, MonteCarloVega_array_upper_2, alpha=0.3, label=f'Naive {CIpercentage}% CI Antithetic')
 	plt.axhline(y=AnalyticVega, color='r', linestyle='--', label=r'Analytic Vega')
 	plt.xscale('log') 
-	plt.title(f'Vega of Put Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
+	plt.title(f'Vega of Knock-Out Put Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity}, H={KnockOutBarrier})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel(r'Vega $( \$ \cdot \sqrt{\mathrm{year}} )$')
 	plt.legend(loc='lower right')
 	plt.grid(True)
 	plt.xlim(1e1, 1e7)
-	plt.savefig("./plots/PutOptionConvergence/MonteCarloVegaConvergence_PutOption.jpg")
+	plt.savefig("../plots/BarrierKnockOutPutOptionConvergence/MonteCarloVegaConvergence_BarrierPutOption.jpg")
 	plt.clf()
 	
 	plt.figure(figsize=(8, 6))
@@ -212,29 +242,46 @@ def main():
 	plt.fill_between(NSim_array, MonteCarloTheta_array_lower_2, MonteCarloTheta_array_upper_2, alpha=0.3, label=f'Naive {CIpercentage}% CI Antithetic')	
 	plt.axhline(y=AnalyticTheta, color='r', linestyle='--', label=r'Analytic $\Theta$')
 	plt.xscale('log') 
-	plt.title(f'Theta of Put Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
+	plt.title(f'Theta of Knock-Out Put Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity}, H={KnockOutBarrier})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel(r'$\Theta$ $( \$ / \mathrm{year} )$')
 	plt.legend(loc='lower right')
 	plt.grid(True)
 	plt.xlim(1e1, 1e7)
-	plt.savefig("./plots/PutOptionConvergence/MonteCarloThetaConvergence_PutOption.jpg")
+	plt.savefig("../plots/BarrierKnockOutPutOptionConvergence/MonteCarloThetaConvergence_BarrierPutOption.jpg")
 	plt.clf()
+	
+	plt.figure(figsize=(8, 6))
+	plt.plot(NSim_array, MonteCarloTheta_array, '-o', label=r'Monte Carlo $\Theta$', c='C0')
+	plt.fill_between(NSim_array, MonteCarloTheta_array_lower, MonteCarloTheta_array_upper, alpha=0.3, label=f'Naive {CIpercentage}% CI')
+	plt.plot(NSim_array, MonteCarloTheta_array_2, '-o', label=fr'Monte Carlo $\Theta$ Antithetic', c='C1')
+	plt.fill_between(NSim_array, MonteCarloTheta_array_lower_2, MonteCarloTheta_array_upper_2, alpha=0.3, label=f'Naive {CIpercentage}% CI Antithetic')	
+	plt.axhline(y=AnalyticTheta, color='r', linestyle='--', label=r'Analytic $\Theta$')
+	plt.xscale('log') 
+	plt.title(f'Theta of Knock-Out Put Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity}, H={KnockOutBarrier})')
+	plt.xlabel('Number of Simulations')
+	plt.ylabel(r'$\Theta$ $( \$ / \mathrm{year} )$')
+	plt.legend(loc='lower right')
+	plt.grid(True)
+	plt.xlim(1e1, 1e7)
+	plt.ylim(-20, 0)	
+	plt.savefig("../plots/BarrierKnockOutPutOptionConvergence/MonteCarloThetaConvergence_BarrierPutOption_ZoomedIn.jpg")
+	plt.clf()	
 
 	plt.figure(figsize=(8, 6))
 	plt.plot(NSim_array, MonteCarloRho_array, '-o', label=r'Monte Carlo $\rho$', c='C0')
 	plt.fill_between(NSim_array, MonteCarloRho_array_lower, MonteCarloRho_array_upper, alpha=0.3, label=f'Naive {CIpercentage}% CI')
 	plt.plot(NSim_array, MonteCarloRho_array_2, '-o', label=fr'Monte Carlo $\rho$ Antithetic', c='C1')
-	plt.fill_between(NSim_array, MonteCarloRho_array_lower_2, MonteCarloRho_array_upper_2, alpha=0.3, label=f'Naive {CIpercentage}% CI Antithetic')
+	plt.fill_between(NSim_array, MonteCarloRho_array_lower_2, MonteCarloRho_array_upper_2, alpha=0.3, label=f'Naive {CIpercentage}% CI Antithetic')	
 	plt.axhline(y=AnalyticRho, color='r', linestyle='--', label=r'Analytic $\rho$')
 	plt.xscale('log') 
-	plt.title(f'Rho of Put Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
+	plt.title(f'Rho of Knock-Out Put Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity}, H={KnockOutBarrier})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel(r'$\rho$ $( \$ \cdot \mathrm{year} )$')
-	plt.legend(loc='lower right')
+	plt.legend(loc='upper right')
 	plt.grid(True)
 	plt.xlim(1e1, 1e7)
-	plt.savefig("./plots/PutOptionConvergence/MonteCarloRhoConvergence_PutOption.jpg")
+	plt.savefig("../plots/BarrierKnockOutPutOptionConvergence/MonteCarloRhoConvergence_BarrierPutOption.jpg")
 	plt.clf()
 
 	print('Generated plots saved in plots folder.')
@@ -242,9 +289,6 @@ def main():
 
 if __name__ == "__main__":
 	main()
-
-
-
 
 
 

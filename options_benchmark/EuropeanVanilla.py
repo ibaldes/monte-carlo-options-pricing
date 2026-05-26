@@ -13,11 +13,6 @@ ALSO REPRODUCES THE PRICING USING MONTE-CARLO AS A CHECK OF OUR NUMERICAL METHOD
 
 StandardBaseSeed = 0
 
-if __name__ == '__main__':
-	print("Number of cpus : ", mp.cpu_count())
-	pool = Pool(processes=(mp.cpu_count() - 1))
-
-
 #######
 
 def BlackScholesVanillaEuropeanCall(S,K,r,sigma,t,T):
@@ -697,6 +692,9 @@ def MonteCarloVanillaEuropeanPutWithGreeks(S, K, r, sigma, t, T, n_simulations=2
 #################
 
 def main():
+	print("Number of cpus : ", mp.cpu_count())
+	pool = Pool(processes=(mp.cpu_count() - 1))
+
 	print('\n')
 
 	print('Call Option Prices with S=80, K=85, r=0.05, sigma=0.4, t=1, T=1.25')

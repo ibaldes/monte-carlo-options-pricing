@@ -12,15 +12,15 @@ import EuropeanBarrier as eb
 ### PROVIDES EXAMPLES OF HOW TO USE THE ANALYTIC AND MONTE-CARLO PRICING FUNCTIONS 
 ### WE CAN CHECK THE VALUES ARE CONSISTENT (UP TO RANDOM ERROS FROM THE MONTE-CARLO) IN THE RELEVANT LIMITS
 
-print("Number of cpus : ", mp.cpu_count())
-pool = Pool(processes=(mp.cpu_count() - 1))
-
 StandardBaseSeed = 0
 
 ##################################################################################
 ##################################################################################
 
 def main():
+	print("Number of cpus : ", mp.cpu_count())
+	pool = Pool(processes=(mp.cpu_count() - 1))
+
 	print('\n')
 	print('**********************************************************************************************************************')
 	print('Call Option Prices with S=80, K=85, r=0.05, sigma=0.4, t=1, T=1.25')
