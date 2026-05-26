@@ -17,7 +17,7 @@ Code for Monte-Carlo pricing of options assuming the Black-Scholes model and ris
 # SUMMARY 
 
 ## options_benchmark folder
-Contains standard scripts for calculating options pricing using analytic formulas and monte-carlo. Greeks calculated using finite difference approach.
+Contains standard scripts for calculating options pricing using analytic formulas and monte-carlo. Monte-Carlo greeks calculated using finite difference approach.
 
 * EuropeanVanilla.py contains functions for the following:
 1. Analytic results of Black Scholes Vanilla European options with or without Greeks (delta, gamma, vega, theta, rho).
@@ -38,11 +38,11 @@ Similar to options_benchmark, but uses antithetic variates. The first-half batch
 
 The scripts are:
 
-* EuropeanVanillaAntithetic.py is as the above, but with Antithetic Variates for the Monte-Carlo.
+* EuropeanVanillaAntithetic.py is as the above EuropeanVanilla, but with Antithetic Variates for the Monte-Carlo.
 
-* EuropeanBarrierAntithetic.py is as the above, but with Antithetic Variates for the Monte-Carlo.
+* EuropeanBarrierAntithetic.py is as the above EuropeanBarrier, but with Antithetic Variates for the Monte-Carlo.
 
-* LookBackAntithetic.py is as the above, but with Antithetic Variates for the Monte-Carlo.
+* LookBackAntithetic.py is as the above LookBack, but with Antithetic Variates for the Monte-Carlo.
 
 
 ## Nsims_scaling folder
@@ -73,7 +73,7 @@ Contains a script generating some geometric brownian motion paths for stock pric
 
 ## plots folder
 
-Stores the generated plots are stored.
+Stores the generated plots.
 
 *****************************************************
 # Eventual Utility
