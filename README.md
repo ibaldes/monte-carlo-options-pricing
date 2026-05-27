@@ -10,7 +10,6 @@ Code for Monte-Carlo pricing of options assuming the Black-Scholes model and ris
 - pandas
 - numpy
 - matplotlib 
-- multiprocessing (to allow for quicker calculation over large n_simulations)
 - scipy
 
 *****************************************************
