@@ -161,8 +161,9 @@ def MonteCarloVanillaEuropeanCallWithGreeks(S, K, r, sigma, t, T, n_simulations=
 	terminal_price_array = np.exp(log_path_array[:, -2])
 	
 	##### perturb in S for Delta and Gamma ####
-	terminal_price_array_smaller_S = terminal_price_array*(S-0.01)/S
-	terminal_price_array_larger_S = terminal_price_array*(S+0.01)/S 	
+	price_step = 1.0
+	terminal_price_array_smaller_S = terminal_price_array*(S-price_step)/S
+	terminal_price_array_larger_S = terminal_price_array*(S+price_step)/S 	
 	
 	##### perturb in sigma for vega ###########
 	smaller_sigma = (sigma-0.01)
@@ -196,8 +197,8 @@ def MonteCarloVanillaEuropeanCallWithGreeks(S, K, r, sigma, t, T, n_simulations=
 	terminal_price_array_AT = np.exp(log_path_array_AT[:, -2])
 	
 	##### perturb in S for Delta and Gamma ####
-	terminal_price_array_smaller_S_AT = terminal_price_array_AT*(S-0.01)/S
-	terminal_price_array_larger_S_AT = terminal_price_array_AT*(S+0.01)/S 	
+	terminal_price_array_smaller_S_AT = terminal_price_array_AT*(S-price_step)/S
+	terminal_price_array_larger_S_AT = terminal_price_array_AT*(S+price_step)/S 	
 	
 	##### perturb in sigma for vega ###########
 	smaller_sigma = (sigma-0.01)
@@ -232,7 +233,7 @@ def MonteCarloVanillaEuropeanCallWithGreeks(S, K, r, sigma, t, T, n_simulations=
 	terminal_price_array_smaller_r = terminal_price_array_smaller_r.flatten()
 	terminal_price_array_larger_r = terminal_price_array_larger_r.flatten()
 	
-	terminal_price_array_AT = terminal_price_array.flatten()
+	terminal_price_array_AT = terminal_price_array_AT.flatten()
 	terminal_price_array_smaller_S_AT = terminal_price_array_smaller_S_AT.flatten()
 	terminal_price_array_larger_S_AT = terminal_price_array_larger_S_AT.flatten() 	
 	terminal_price_array_smaller_sigma_AT = terminal_price_array_smaller_sigma_AT.flatten()
@@ -277,14 +278,14 @@ def MonteCarloVanillaEuropeanCallWithGreeks(S, K, r, sigma, t, T, n_simulations=
 	option_value_array_smaller_S = np.exp(-r*(T-t))*payoff_array_smaller_S
 	option_value_array_larger_S = np.exp(-r*(T-t))*payoff_array_larger_S
 	
-	delta_array = (option_value_array_larger_S-option_value_array_smaller_S)/(2*0.01)
+	delta_array = (option_value_array_larger_S-option_value_array_smaller_S)/(2*price_step)
 	
 	delta_value = np.mean(delta_array)
 	
 	delta_StandardError = stats.sem(delta_array)
 
 	#### Calculate Gamma = d^2V/dS^2 (partial) #####
-	gamma_array = (option_value_array_larger_S-2*option_value_array+option_value_array_smaller_S)/(0.01**2)
+	gamma_array = (option_value_array_larger_S-2*option_value_array+option_value_array_smaller_S)/(price_step**2)
 	
 	gamma_value = np.mean(gamma_array)
 	
@@ -391,8 +392,9 @@ def MonteCarloVanillaEuropeanPutWithGreeks(S, K, r, sigma, t, T, n_simulations=2
 	terminal_price_array = np.exp(log_path_array[:, -2])
 	
 	##### perturb in S for Delta and Gamma ####
-	terminal_price_array_smaller_S = terminal_price_array*(S-0.01)/S
-	terminal_price_array_larger_S = terminal_price_array*(S+0.01)/S 	
+	price_step = 1.0
+	terminal_price_array_smaller_S = terminal_price_array*(S-price_step)/S
+	terminal_price_array_larger_S = terminal_price_array*(S+price_step)/S 	
 	
 	##### perturb in sigma for vega ###########
 	smaller_sigma = (sigma-0.01)
@@ -426,8 +428,8 @@ def MonteCarloVanillaEuropeanPutWithGreeks(S, K, r, sigma, t, T, n_simulations=2
 	terminal_price_array_AT = np.exp(log_path_array_AT[:, -2])
 	
 	##### perturb in S for Delta and Gamma ####
-	terminal_price_array_smaller_S_AT = terminal_price_array_AT*(S-0.01)/S
-	terminal_price_array_larger_S_AT = terminal_price_array_AT*(S+0.01)/S 	
+	terminal_price_array_smaller_S_AT = terminal_price_array_AT*(S-price_step)/S
+	terminal_price_array_larger_S_AT = terminal_price_array_AT*(S+price_step)/S 	
 	
 	##### perturb in sigma for vega ###########
 	smaller_sigma = (sigma-0.01)
@@ -462,7 +464,7 @@ def MonteCarloVanillaEuropeanPutWithGreeks(S, K, r, sigma, t, T, n_simulations=2
 	terminal_price_array_smaller_r = terminal_price_array_smaller_r.flatten()
 	terminal_price_array_larger_r = terminal_price_array_larger_r.flatten()
 	
-	terminal_price_array_AT = terminal_price_array.flatten()
+	terminal_price_array_AT = terminal_price_array_AT.flatten()
 	terminal_price_array_smaller_S_AT = terminal_price_array_smaller_S_AT.flatten()
 	terminal_price_array_larger_S_AT = terminal_price_array_larger_S_AT.flatten() 	
 	terminal_price_array_smaller_sigma_AT = terminal_price_array_smaller_sigma_AT.flatten()
@@ -506,7 +508,7 @@ def MonteCarloVanillaEuropeanPutWithGreeks(S, K, r, sigma, t, T, n_simulations=2
 	option_value_array_smaller_S = np.exp(-r*(T-t))*payoff_array_smaller_S
 	option_value_array_larger_S = np.exp(-r*(T-t))*payoff_array_larger_S
 	
-	delta_array = (option_value_array_larger_S-option_value_array_smaller_S)/(2*0.01)
+	delta_array = (option_value_array_larger_S-option_value_array_smaller_S)/(2*price_step)
 	
 	delta_value = np.mean(delta_array)
 	
@@ -514,7 +516,7 @@ def MonteCarloVanillaEuropeanPutWithGreeks(S, K, r, sigma, t, T, n_simulations=2
 
 	#### Calculate Gamma = d^2V/dS^2 (partial) #####	
 	
-	gamma_array = (option_value_array_larger_S-2*option_value_array+option_value_array_smaller_S)/(0.01**2)
+	gamma_array = (option_value_array_larger_S-2*option_value_array+option_value_array_smaller_S)/(price_step**2)
 	
 	gamma_value = np.mean(gamma_array)
 	

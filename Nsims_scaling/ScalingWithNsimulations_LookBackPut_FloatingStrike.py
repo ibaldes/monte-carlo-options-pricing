@@ -40,7 +40,7 @@ def main():
 	timenow = 0
 	timeatmaturity = 0.25
 	n_steps_1 = 100
-	n_steps_2 = 400	 
+	n_steps_2 = 300	 
 
 	### Generate the Monte-Carlo prices and Greeks. Note we can increase n_steps to get a better theta estimate (current implementation using plus/minus one step to calculate derivative).
 
@@ -187,7 +187,7 @@ def main():
 	plt.title(f'Price of Floating Strike Look Back Put Option (S={Stockprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel('Price ($)')
-	plt.legend(loc='upper right')
+	plt.legend()
 	plt.grid(True)
 	plt.xlim(1e1, 1e6)
 	plt.savefig("../plots/LookBackPutFloatingStrike/MonteCarloPriceConvergence_LookBackPut_FloatingStrike.jpg")
@@ -205,7 +205,7 @@ def main():
 	plt.title(f'Delta of Floating Strike Look Back Put Option (S={Stockprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel(r'$\Delta$')
-	plt.legend(loc='upper right')
+	plt.legend()
 	plt.grid(True)
 	plt.xlim(1e1, 1e6)
 	plt.savefig("../plots/LookBackPutFloatingStrike/MonteCarloDeltaConvergence_LookBackPut_FloatingStrike.jpg")
@@ -223,7 +223,7 @@ def main():
 	plt.title(f'Gamma of Floating Strike Look Back Put Option (S={Stockprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel(r'$\Gamma$ $(\$)^{-1}$')
-	plt.legend(loc='lower right')
+	plt.legend()
 	plt.grid(True)
 	plt.xlim(1e1, 1e6)
 	plt.savefig("../plots/LookBackPutFloatingStrike/MonteCarloGammaConvergence_LookBackPut_FloatingStrike.jpg")
@@ -241,7 +241,7 @@ def main():
 	plt.title(f'Vega of Floating Strike Look Back Put Option (S={Stockprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel(r'Vega $( \$ \cdot \sqrt{\mathrm{year}} )$')
-	plt.legend(loc='upper right')
+	plt.legend()
 	plt.grid(True)
 	plt.xlim(1e1, 1e6)
 	plt.savefig("../plots/LookBackPutFloatingStrike/MonteCarloVegaConvergence_LookBackPut_FloatingStrike.jpg")
@@ -259,7 +259,7 @@ def main():
 	plt.title(f'Theta of Floating Strike Look Back Put Option (S={Stockprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel(r'$\Theta$ $( \$ / \mathrm{year} )$')
-	plt.legend(loc='upper right')
+	plt.legend()
 	plt.grid(True)
 	plt.xlim(1e1, 1e6)
 	plt.savefig("../plots/LookBackPutFloatingStrike/MonteCarloThetaConvergence_LookBackPut_FloatingStrike.jpg")
@@ -277,7 +277,7 @@ def main():
 	plt.title(f'Rho of Floating Strike Look Back Put Option (S={Stockprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel(r'$\rho$ $( \$ \cdot \mathrm{year} )$')
-	plt.legend(loc='lower right')
+	plt.legend()
 	plt.grid(True)
 	plt.xlim(1e1, 1e6)
 	plt.savefig("../plots/LookBackPutFloatingStrike/MonteCarloRhoConvergence_LookBackPut_FloatingStrike.jpg")

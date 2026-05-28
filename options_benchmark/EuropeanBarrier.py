@@ -502,8 +502,9 @@ def MonteCarloKnockInEuropeanCallWithGreeks(S, K, r, sigma, t, T, KnockInBarrier
 	terminal_price_array = np.exp(log_path_array[:, -2])
 	
 	##### perturb in S for Delta and Gamma ####
-	terminal_price_array_smaller_S = terminal_price_array*(S-0.01)/S
-	terminal_price_array_larger_S = terminal_price_array*(S+0.01)/S 	
+	price_step = 0.01
+	terminal_price_array_smaller_S = terminal_price_array*(S-price_step)/S
+	terminal_price_array_larger_S = terminal_price_array*(S+price_step)/S 	
 	
 	##### perturb in sigma for vega ###########
 	smaller_sigma = (sigma-0.01)
@@ -621,13 +622,13 @@ def MonteCarloKnockInEuropeanCallWithGreeks(S, K, r, sigma, t, T, KnockInBarrier
 	payoff_array_larger_S = payoff_array_larger_S.flatten()*KnockInFilter_array_larger_S.flatten() ### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 	option_value_array_larger_S = np.exp(-r*(T-t))*payoff_array_larger_S
 	
-	delta_array = (option_value_array_larger_S-option_value_array_smaller_S)/(2*0.01)
+	delta_array = (option_value_array_larger_S-option_value_array_smaller_S)/(2*price_step)
 	delta_value = np.mean(delta_array)
 	delta_StandardError = stats.sem(delta_array)
 
 	#### Calculate Gamma = d^2V/dS^2 (partial) #####	
 	
-	gamma_array = (option_value_array_larger_S-2*option_value_array+option_value_array_smaller_S)/(0.01**2)
+	gamma_array = (option_value_array_larger_S-2*option_value_array+option_value_array_smaller_S)/(price_step**2)
 	gamma_value = np.mean(gamma_array)
 	gamma_StandardError = stats.sem(gamma_array)
 
@@ -746,8 +747,9 @@ def MonteCarloKnockOutEuropeanCallWithGreeks(S, K, r, sigma, t, T, KnockOutBarri
 	terminal_price_array = np.exp(log_path_array[:, -2])
 	
 	##### perturb in S for Delta and Gamma ####
-	terminal_price_array_smaller_S = terminal_price_array*(S-0.01)/S
-	terminal_price_array_larger_S = terminal_price_array*(S+0.01)/S 	
+	price_step = 0.01
+	terminal_price_array_smaller_S = terminal_price_array*(S-price_step)/S
+	terminal_price_array_larger_S = terminal_price_array*(S+price_step)/S 	
 	
 	##### perturb in sigma for vega ###########
 	smaller_sigma = (sigma-0.01)
@@ -790,10 +792,10 @@ def MonteCarloKnockOutEuropeanCallWithGreeks(S, K, r, sigma, t, T, KnockOutBarri
 	MaxPrice_array = np.exp( np.max(log_path_array[:, :-1], axis=1, keepdims=True) )
 	
 	
-	MinPrice_array_smaller_S = MinPrice_array*(S-0.01)/S
-	MinPrice_array_larger_S = MinPrice_array*(S+0.01)/S
-	MaxPrice_array_smaller_S = MaxPrice_array*(S-0.01)/S
-	MaxPrice_array_larger_S = MaxPrice_array*(S+0.01)/S
+	MinPrice_array_smaller_S = MinPrice_array*(S-price_step)/S
+	MinPrice_array_larger_S = MinPrice_array*(S+price_step)/S
+	MaxPrice_array_smaller_S = MaxPrice_array*(S-price_step)/S
+	MaxPrice_array_larger_S = MaxPrice_array*(S+price_step)/S
 	
 	MinPrice_array_smaller_sigma =  np.exp( np.min(log_path_array_smaller_sigma[:, :-1], axis=1, keepdims=True) )
 	MinPrice_array_larger_sigma =   np.exp( np.min(log_path_array_larger_sigma[:, :-1], axis=1, keepdims=True) )
@@ -861,13 +863,13 @@ def MonteCarloKnockOutEuropeanCallWithGreeks(S, K, r, sigma, t, T, KnockOutBarri
 	payoff_array_larger_S = payoff_array_larger_S.flatten()*KnockOutFilter_array_larger_S.flatten() ### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 	option_value_array_larger_S = np.exp(-r*(T-t))*payoff_array_larger_S
 	
-	delta_array = (option_value_array_larger_S-option_value_array_smaller_S)/(2*0.01)
+	delta_array = (option_value_array_larger_S-option_value_array_smaller_S)/(2*price_step)
 	delta_value = np.mean(delta_array)
 	delta_StandardError = stats.sem(delta_array)
 
 	#### Calculate Gamma = d^2V/dS^2 (partial) #####	
 	
-	gamma_array = (option_value_array_larger_S-2*option_value_array+option_value_array_smaller_S)/(0.01**2)
+	gamma_array = (option_value_array_larger_S-2*option_value_array+option_value_array_smaller_S)/(price_step**2)
 	gamma_value = np.mean(gamma_array)
 	gamma_StandardError = stats.sem(gamma_array)
 
@@ -986,8 +988,9 @@ def MonteCarloKnockInEuropeanPutWithGreeks(S, K, r, sigma, t, T, KnockInBarrier,
 	terminal_price_array = np.exp(log_path_array[:, -2])
 	
 	##### perturb in S for Delta and Gamma ####
-	terminal_price_array_smaller_S = terminal_price_array*(S-0.01)/S
-	terminal_price_array_larger_S = terminal_price_array*(S+0.01)/S 	
+	price_step = 0.01	
+	terminal_price_array_smaller_S = terminal_price_array*(S-price_step)/S
+	terminal_price_array_larger_S = terminal_price_array*(S+price_step)/S 	
 	
 	##### perturb in sigma for vega ###########
 	smaller_sigma = (sigma-0.01)
@@ -1030,10 +1033,10 @@ def MonteCarloKnockInEuropeanPutWithGreeks(S, K, r, sigma, t, T, KnockInBarrier,
 	MaxPrice_array = np.exp( np.max(log_path_array[:, :-1], axis=1, keepdims=True) )
 	
 	
-	MinPrice_array_smaller_S = MinPrice_array*(S-0.01)/S
-	MinPrice_array_larger_S = MinPrice_array*(S+0.01)/S
-	MaxPrice_array_smaller_S = MaxPrice_array*(S-0.01)/S
-	MaxPrice_array_larger_S = MaxPrice_array*(S+0.01)/S
+	MinPrice_array_smaller_S = MinPrice_array*(S-price_step)/S
+	MinPrice_array_larger_S = MinPrice_array*(S+price_step)/S
+	MaxPrice_array_smaller_S = MaxPrice_array*(S-price_step)/S
+	MaxPrice_array_larger_S = MaxPrice_array*(S+price_step)/S
 	
 	MinPrice_array_smaller_sigma =  np.exp( np.min(log_path_array_smaller_sigma[:, :-1], axis=1, keepdims=True) )
 	MinPrice_array_larger_sigma =   np.exp( np.min(log_path_array_larger_sigma[:, :-1], axis=1, keepdims=True) )
@@ -1099,13 +1102,13 @@ def MonteCarloKnockInEuropeanPutWithGreeks(S, K, r, sigma, t, T, KnockInBarrier,
 	payoff_array_larger_S = payoff_array_larger_S.flatten()*KnockInFilter_array_larger_S.flatten() ### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 	option_value_array_larger_S = np.exp(-r*(T-t))*payoff_array_larger_S
 	
-	delta_array = (option_value_array_larger_S-option_value_array_smaller_S)/(2*0.01)
+	delta_array = (option_value_array_larger_S-option_value_array_smaller_S)/(2*price_step)
 	delta_value = np.mean(delta_array)
 	delta_StandardError = stats.sem(delta_array)
 
 	#### Calculate Gamma = d^2V/dS^2 (partial) #####	
 	
-	gamma_array = (option_value_array_larger_S-2*option_value_array+option_value_array_smaller_S)/(0.01**2)
+	gamma_array = (option_value_array_larger_S-2*option_value_array+option_value_array_smaller_S)/(price_step**2)
 	gamma_value = np.mean(gamma_array)
 	gamma_StandardError = stats.sem(gamma_array)
 
@@ -1223,8 +1226,9 @@ def MonteCarloKnockOutEuropeanPutWithGreeks(S, K, r, sigma, t, T, KnockOutBarrie
 	terminal_price_array = np.exp(log_path_array[:, -2])
 	
 	##### perturb in S for Delta and Gamma ####
-	terminal_price_array_smaller_S = terminal_price_array*(S-0.01)/S
-	terminal_price_array_larger_S = terminal_price_array*(S+0.01)/S 	
+	price_step = 0.01
+	terminal_price_array_smaller_S = terminal_price_array*(S-price_step)/S
+	terminal_price_array_larger_S = terminal_price_array*(S+price_step)/S 	
 	
 	##### perturb in sigma for vega ###########
 	smaller_sigma = (sigma-0.01)
@@ -1267,10 +1271,10 @@ def MonteCarloKnockOutEuropeanPutWithGreeks(S, K, r, sigma, t, T, KnockOutBarrie
 	MaxPrice_array = np.exp( np.max(log_path_array[:, :-1], axis=1, keepdims=True) )
 	
 	
-	MinPrice_array_smaller_S = MinPrice_array*(S-0.01)/S
-	MinPrice_array_larger_S = MinPrice_array*(S+0.01)/S
-	MaxPrice_array_smaller_S = MaxPrice_array*(S-0.01)/S
-	MaxPrice_array_larger_S = MaxPrice_array*(S+0.01)/S
+	MinPrice_array_smaller_S = MinPrice_array*(S-price_step)/S
+	MinPrice_array_larger_S = MinPrice_array*(S+price_step)/S
+	MaxPrice_array_smaller_S = MaxPrice_array*(S-price_step)/S
+	MaxPrice_array_larger_S = MaxPrice_array*(S+price_step)/S
 	
 	MinPrice_array_smaller_sigma =  np.exp( np.min(log_path_array_smaller_sigma[:, :-1], axis=1, keepdims=True) )
 	MinPrice_array_larger_sigma =   np.exp( np.min(log_path_array_larger_sigma[:, :-1], axis=1, keepdims=True) )
@@ -1338,13 +1342,13 @@ def MonteCarloKnockOutEuropeanPutWithGreeks(S, K, r, sigma, t, T, KnockOutBarrie
 	payoff_array_larger_S = payoff_array_larger_S.flatten()*KnockOutFilter_array_larger_S.flatten() ### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 	option_value_array_larger_S = np.exp(-r*(T-t))*payoff_array_larger_S
 	
-	delta_array = (option_value_array_larger_S-option_value_array_smaller_S)/(2*0.01)
+	delta_array = (option_value_array_larger_S-option_value_array_smaller_S)/(2*price_step)
 	delta_value = np.mean(delta_array)
 	delta_StandardError = stats.sem(delta_array)
 
 	#### Calculate Gamma = d^2V/dS^2 (partial) #####	
 	
-	gamma_array = (option_value_array_larger_S-2*option_value_array+option_value_array_smaller_S)/(0.01**2)
+	gamma_array = (option_value_array_larger_S-2*option_value_array+option_value_array_smaller_S)/(price_step**2)
 	gamma_value = np.mean(gamma_array)
 	gamma_StandardError = stats.sem(gamma_array)
 
