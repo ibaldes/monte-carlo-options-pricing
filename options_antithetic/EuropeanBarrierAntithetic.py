@@ -16,11 +16,6 @@ THE MONTE-CARLO USES ANTITHETIC VARIATES THROUGHOUT
 
 StandardBaseSeed = 0
 
-if __name__ == '__main__':
-	print("Number of cpus : ", mp.cpu_count())
-	pool = Pool(processes=(mp.cpu_count() - 1))
-
-
 #######################
 
 def AnalyticBlackScholesKnockInCall(S,K,r,sigma,t,T,KnockInBarrier):
@@ -444,237 +439,9 @@ def AnalyticBlackScholesKnockOutPutWithGreeks(S,K,r,sigma,t,T,KnockOutBarrier):
 #######################
 #######################
 
-def generate_terminal_price_ForGreeks_withMinMaxPrice_Antithetic(S, r, sigma, t, T, n_steps=100, seed=0):
-
-	'''
-	Generates terminal stock price, given evolution under the risk-neutral measure for the discounted stock price 
-	Also generates finite differences to the terminal stock prices for changes to S, r, sigma, and t, so we can calculate the Greeks	
-	
-	S is the stock price at time t
-	r is the risk-free interest rate
-	sigma is the volatility
-	t is the time the option price is evaluated
-	T is the expiration time in years
-	n_steps is the number of steps to use (defaults to 100)
-	seed is for the RNG
-	
-	Output is the terminal price and the terminal prices for the perturbed quantities, which will be used for the finite difference estimates of the partial derivatives.
-	Also outputs the MIN and MAX Prices of the stock over the path, for the central simulation, and the perturbed quantities.
-	These MIN and MAX values will be used for the payoff filter of the barrier option.
-	
-	ALL THE OUTPUT IS DOUBLED WITH _AT NAMING USING THE ANTITHETIC VARIATES  
-	'''
-	
-	### set the random seed #######
-	rng = np.random.default_rng(seed)
-
-	### calculate the required time step, unit is in years #####
-	time_step = (T-t)/n_steps
-	
-	### generate an array of brownian motions, one for each time step, given the time step and volatility	
-	brownian_array = np.sqrt(time_step)*sigma*rng.normal(0, 1, size=n_steps)
-	
-	#### initialize the stock price array, the first entry is the price at t, the rest are initialized to zero ####
-	stock_price_array = np.zeros(n_steps+1)
-	stock_price_array[0] = S	
-	
-	#### fill in the stock price array, given the stock price on the previous day, and the brownian motion #####	
-	for j in range(1,n_steps+1):
-		stock_price_array[j] = stock_price_array[j-1]*(1+brownian_array[j-1]+r*time_step)
-	
-	### return the terminal stock price	
-	terminal_price = stock_price_array[-1]
-	
-	### Minimal and maximum stock prices for barrier options
-	
-	MinPrice = np.min(stock_price_array)
-	MaxPrice = np.max(stock_price_array)
-
-	
-	### Finite differences for Delta and Gamma: start with 1 cent greater or smaller price ###
-	terminal_price_smaller_S = terminal_price*(S-0.01)/S
-	terminal_price_larger_S = terminal_price*(S+0.01)/S 
-	
-	MinPrice_smaller_S = MinPrice*(S-0.01)/S
-	MaxPrice_smaller_S = MaxPrice*(S-0.01)/S
-	
-	MinPrice_larger_S = MinPrice*(S+0.01)/S
-	MaxPrice_larger_S = MaxPrice*(S+0.01)/S
-
-	### Finite differences for sigma: start with 1 per cent greater or smaller volatility ###
-	brownian_array_smaller_sigma = brownian_array*(sigma-0.01)/sigma
-	brownian_array_larger_sigma = brownian_array*(sigma+0.01)/sigma
-	
-	stock_price_array_smaller_sigma = np.zeros(n_steps+1)
-	stock_price_array_larger_sigma = np.zeros(n_steps+1)
-	stock_price_array_smaller_sigma[0] = S
-	stock_price_array_larger_sigma[0] = S
-	
-	for j in range(1,n_steps+1):
-		stock_price_array_smaller_sigma[j] = stock_price_array_smaller_sigma[j-1]*(1+brownian_array_smaller_sigma[j-1]+r*time_step)
-		stock_price_array_larger_sigma[j] = stock_price_array_larger_sigma[j-1]*(1+brownian_array_larger_sigma[j-1]+r*time_step)
-	
-	terminal_price_smaller_sigma = stock_price_array_smaller_sigma[-1]
-	terminal_price_larger_sigma = stock_price_array_larger_sigma[-1]
-	
-	MinPrice_smaller_sigma = np.min(stock_price_array_smaller_sigma)
-	MaxPrice_smaller_sigma = np.max(stock_price_array_smaller_sigma)
-	
-	MinPrice_larger_sigma = np.min(stock_price_array_larger_sigma)
-	MaxPrice_larger_sigma =	np.max(stock_price_array_larger_sigma)
-	
-	### Finite differences for t: finish with plus/minus 1 time step differences #############
-	addedjump_smaller_t = np.sqrt(time_step)*sigma*rng.normal(0, 1)
-	
-	terminal_price_smaller_t = stock_price_array[-1]*(1+addedjump_smaller_t+r*time_step)
-	terminal_price_larger_t = stock_price_array[-2]
-	
-	MinPrice_smaller_t = min(terminal_price_smaller_t, MinPrice)
-	MaxPrice_smaller_t = max(terminal_price_smaller_t, MaxPrice)
-	
-	MinPrice_larger_t = np.min(stock_price_array[0:-1])
-	MaxPrice_larger_t = np.max(stock_price_array[0:-1])
-
-	### Finite differences for r: start with plus/minus 1 bps (1e-4 in r) difference ########
-	
-	stock_price_array_smaller_r = np.zeros(n_steps+1)
-	stock_price_array_larger_r = np.zeros(n_steps+1)
-	stock_price_array_smaller_r[0] = S
-	stock_price_array_larger_r[0] = S
-	
-	for j in range(1,n_steps+1):
-		stock_price_array_smaller_r[j] = stock_price_array_smaller_r[j-1]*(1+brownian_array[j-1]+(r-1e-4)*time_step)
-		stock_price_array_larger_r[j] = stock_price_array_larger_r[j-1]*(1+brownian_array[j-1]+(r+1e-4)*time_step)
-	
-	terminal_price_smaller_r = stock_price_array_smaller_r[-1]
-	terminal_price_larger_r = stock_price_array_larger_r[-1]
-
-	MinPrice_smaller_r = np.min(stock_price_array_smaller_r)
-	MaxPrice_smaller_r = np.max(stock_price_array_smaller_r)
-	
-	MinPrice_larger_r = np.min(stock_price_array_larger_r)
-	MaxPrice_larger_r = np.max(stock_price_array_larger_r)
-	
-	#################################################
-	######	Antithetic Pairs of the above ###########
-	
-	brownian_array_AT = -brownian_array
-
-	stock_price_array_AT = np.zeros(n_steps+1)
-	stock_price_array_AT[0] = S	
-	
-	for j in range(1,n_steps+1):
-		stock_price_array_AT[j] = stock_price_array_AT[j-1]*(1+brownian_array_AT[j-1]+r*time_step)
-	
-	### return the terminal stock price	
-	terminal_price_AT = stock_price_array_AT[-1]
-	
-	MinPrice_AT = np.min(stock_price_array_AT)
-	MaxPrice_AT = np.max(stock_price_array_AT)
-	
-	### Finite differences for Delta and Gamma: start with 1 cent greater or smaller price ###
-	terminal_price_smaller_S_AT = terminal_price_AT*(S-0.01)/S
-	terminal_price_larger_S_AT = terminal_price_AT*(S+0.01)/S
-
-	MinPrice_smaller_S_AT = MinPrice_AT*(S-0.01)/S
-	MaxPrice_smaller_S_AT = MaxPrice_AT*(S-0.01)/S
-	
-	MinPrice_larger_S_AT = MinPrice_AT*(S+0.01)/S
-	MaxPrice_larger_S_AT = MaxPrice_AT*(S+0.01)/S
-
-	### Finite differences for sigma: start with 1 per cent greater or smaller volatility ###
-	brownian_array_smaller_sigma_AT = brownian_array_AT*(sigma-0.01)/sigma
-	brownian_array_larger_sigma_AT = brownian_array_AT*(sigma+0.01)/sigma
-	
-	stock_price_array_smaller_sigma_AT = np.zeros(n_steps+1)
-	stock_price_array_larger_sigma_AT = np.zeros(n_steps+1)
-	stock_price_array_smaller_sigma_AT[0] = S
-	stock_price_array_larger_sigma_AT[0] = S
-	
-	for j in range(1,n_steps+1):
-		stock_price_array_smaller_sigma_AT[j] = stock_price_array_smaller_sigma_AT[j-1]*(1+brownian_array_smaller_sigma_AT[j-1]+r*time_step)
-		stock_price_array_larger_sigma_AT[j] = stock_price_array_larger_sigma_AT[j-1]*(1+brownian_array_larger_sigma_AT[j-1]+r*time_step)
-	
-	terminal_price_smaller_sigma_AT = stock_price_array_smaller_sigma_AT[-1]
-	terminal_price_larger_sigma_AT = stock_price_array_larger_sigma_AT[-1]
-	
-	MinPrice_smaller_sigma_AT = np.min(stock_price_array_smaller_sigma_AT)
-	MaxPrice_smaller_sigma_AT = np.max(stock_price_array_smaller_sigma_AT)
-	
-	MinPrice_larger_sigma_AT = np.min(stock_price_array_larger_sigma_AT)
-	MaxPrice_larger_sigma_AT = np.max(stock_price_array_larger_sigma_AT)
-	
-	### Finite differences for t: finish with plus/minus 1 time step differences #############
-	
-	terminal_price_smaller_t_AT = stock_price_array_AT[-1]*(1-addedjump_smaller_t+r*time_step)
-	terminal_price_larger_t_AT = stock_price_array_AT[-2]
-
-	MinPrice_smaller_t_AT = min(terminal_price_smaller_t_AT, MinPrice_AT)
-	MaxPrice_smaller_t_AT = max(terminal_price_smaller_t_AT, MaxPrice_AT)
-	
-	MinPrice_larger_t_AT = np.min(stock_price_array_AT[0:-1])
-	MaxPrice_larger_t_AT = np.max(stock_price_array_AT[0:-1])	
-
-	### Finite differences for r: start with plus/minus 1 bps (1e-4 in r) difference ########
-	
-	stock_price_array_smaller_r_AT = np.zeros(n_steps+1)
-	stock_price_array_larger_r_AT = np.zeros(n_steps+1)
-	stock_price_array_smaller_r_AT[0] = S
-	stock_price_array_larger_r_AT[0] = S
-	
-	for j in range(1,n_steps+1):
-		stock_price_array_smaller_r_AT[j] = stock_price_array_smaller_r_AT[j-1]*(1+brownian_array_AT[j-1]+(r-1e-4)*time_step)
-		stock_price_array_larger_r_AT[j] = stock_price_array_larger_r_AT[j-1]*(1+brownian_array_AT[j-1]+(r+1e-4)*time_step)
-	
-	terminal_price_smaller_r_AT = stock_price_array_smaller_r_AT[-1]
-	terminal_price_larger_r_AT = stock_price_array_larger_r_AT[-1]
-	
-	MinPrice_smaller_r_AT = np.min(stock_price_array_smaller_r_AT)
-	MaxPrice_smaller_r_AT = np.max(stock_price_array_smaller_r_AT)
-	
-	MinPrice_larger_r_AT = np.min(stock_price_array_larger_r_AT)
-	MaxPrice_larger_r_AT = np.max(stock_price_array_larger_r_AT)
-	
-	#################################################
-	#################################################
-	
-	return(terminal_price, terminal_price_smaller_S, terminal_price_larger_S, terminal_price_smaller_sigma, terminal_price_larger_sigma, terminal_price_smaller_t, terminal_price_larger_t, terminal_price_smaller_r, terminal_price_larger_r, MinPrice, MaxPrice, MinPrice_smaller_S, MaxPrice_smaller_S, MinPrice_larger_S, MaxPrice_larger_S, MinPrice_smaller_sigma, MaxPrice_smaller_sigma, MinPrice_larger_sigma, MaxPrice_larger_sigma, MinPrice_smaller_t, MaxPrice_smaller_t, MinPrice_larger_t, MaxPrice_larger_t, MinPrice_smaller_r, MaxPrice_smaller_r,  MinPrice_larger_r, MaxPrice_larger_r, terminal_price_AT, terminal_price_smaller_S_AT, terminal_price_larger_S_AT, terminal_price_smaller_sigma_AT, terminal_price_larger_sigma_AT, terminal_price_smaller_t_AT, terminal_price_larger_t_AT, terminal_price_smaller_r_AT, terminal_price_larger_r_AT, MinPrice_AT, MaxPrice_AT, MinPrice_smaller_S_AT, MaxPrice_smaller_S_AT, MinPrice_larger_S_AT, MaxPrice_larger_S_AT, MinPrice_smaller_sigma_AT, MaxPrice_smaller_sigma_AT, MinPrice_larger_sigma_AT, MaxPrice_larger_sigma_AT, MinPrice_smaller_t_AT, MaxPrice_smaller_t_AT, MinPrice_larger_t_AT, MaxPrice_larger_t_AT, MinPrice_smaller_r_AT, MaxPrice_smaller_r_AT,  MinPrice_larger_r_AT, MaxPrice_larger_r_AT)
 
 
-
-################ BARRIER OPTIONS ################################################
-
-#### Filter functions dependent of the Min or Max Price and whether we have a Knock In or Knock Out Barrier
-#### Some of these are redundant, but defined and used in the functions below, for clarity of the code.
-
-def KnockInBarrierFilterMaxPrice(MaxPrice, KnockInBarrier):
-	if MaxPrice >= KnockInBarrier:
-		output = 1
-	else:
-		output = 0
-	return(output)
-	
-def KnockOutBarrierFilterMaxPrice(MaxPrice, KnockOutBarrier):
-	if MaxPrice >= KnockOutBarrier:
-		output = 0
-	else:
-		output = 1
-	return(output)
-
-def KnockInBarrierFilterMinPrice(MinPrice, KnockInBarrier):
-	if MinPrice <= KnockInBarrier:
-		output = 1
-	else:
-		output = 0
-	return(output)
-	
-def KnockOutBarrierFilterMinPrice(MinPrice, KnockOutBarrier):
-	if MinPrice <= KnockOutBarrier:
-		output = 0
-	else:
-		output = 1
-	return(output)
-
+################ MONTE-CARLO BARRIER OPTIONS ####################################
 #################################################################################
 
 def MonteCarloKnockInEuropeanCallWithGreeks(S, K, r, sigma, t, T, KnockInBarrier, n_simulations=250000, n_steps=100, BaseSeed=StandardBaseSeed):
@@ -726,72 +493,259 @@ def MonteCarloKnockInEuropeanCallWithGreeks(S, K, r, sigma, t, T, KnockInBarrier
 	KnockInBarrier = CorrectionFactor*KnockInBarrier
 	###
 	
-	#### calculate the terminal prices and store them as a list ####
-	#### use multiple processors to speed up the simulations #######
-	seed_number_array = np.arange(n_simulations) + BaseSeed
-
-	args = [(S, r, sigma, t, T, n_steps, seed) for seed in seed_number_array]
+	### Calculate the evolution of the stock price - vectorized approach ############
+	#################################################################################
+	rng = np.random.default_rng(BaseSeed)
+	brownian_array = rng.normal(0, 1, size=(n_simulations,n_steps+1))			### Generate a Brownian motion array - 1 additional step for when we calculate theta
+	log_step_array = (r - 0.5*sigma**2)*time_step + np.sqrt(time_step)*sigma*brownian_array ### Array of movements in the log of S for each time step
+	log_path_array = np.log(S) + np.cumsum( log_step_array, axis = 1 ) 			### Prices at each time step
+	log_path_array = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array ), axis=1 ) ### add the initial price as the first entry
 	
-
-	with mp.Pool() as pool:
-		full_terminal_price_array = pool.starmap(generate_terminal_price_ForGreeks_withMinMaxPrice_Antithetic, args)
-
-	#### 
-	full_terminal_price_array = np.array(full_terminal_price_array)
+	#################################################################################
+	#### calculate the terminal prices and store them as a numpy array ####
+	terminal_price_array = np.exp(log_path_array[:, -2])
 	
-	full_terminal_price_df = pd.DataFrame(full_terminal_price_array, columns=['terminal_price', 'terminal_price_smaller_S', 'terminal_price_larger_S', 'terminal_price_smaller_sigma', 'terminal_price_larger_sigma', 'terminal_price_smaller_t', 'terminal_price_larger_t', 'terminal_price_smaller_r', 'terminal_price_larger_r', 'MinPrice', 'MaxPrice', 'MinPrice_smaller_S', 'MaxPrice_smaller_S', 'MinPrice_larger_S', 'MaxPrice_larger_S', 'MinPrice_smaller_sigma', 'MaxPrice_smaller_sigma', 'MinPrice_larger_sigma', 'MaxPrice_larger_sigma', 'MinPrice_smaller_t', 'MaxPrice_smaller_t', 'MinPrice_larger_t', 'MaxPrice_larger_t', 'MinPrice_smaller_r', 'MaxPrice_smaller_r',  'MinPrice_larger_r', 'MaxPrice_larger_r', 'terminal_price_AT', 'terminal_price_smaller_S_AT', 'terminal_price_larger_S_AT', 'terminal_price_smaller_sigma_AT', 'terminal_price_larger_sigma_AT', 'terminal_price_smaller_t_AT', 'terminal_price_larger_t_AT', 'terminal_price_smaller_r_AT', 'terminal_price_larger_r_AT', 'MinPrice_AT', 'MaxPrice_AT', 'MinPrice_smaller_S_AT', 'MaxPrice_smaller_S_AT', 'MinPrice_larger_S_AT', 'MaxPrice_larger_S_AT', 'MinPrice_smaller_sigma_AT', 'MaxPrice_smaller_sigma_AT', 'MinPrice_larger_sigma_AT', 'MaxPrice_larger_sigma_AT', 'MinPrice_smaller_t_AT', 'MaxPrice_smaller_t_AT', 'MinPrice_larger_t_AT', 'MaxPrice_larger_t_AT', 'MinPrice_smaller_r_AT', 'MaxPrice_smaller_r_AT',  'MinPrice_larger_r_AT', 'MaxPrice_larger_r_AT'])
+	##### perturb in S for Delta and Gamma ####
+	terminal_price_array_smaller_S = terminal_price_array*(S-0.01)/S
+	terminal_price_array_larger_S = terminal_price_array*(S+0.01)/S 	
+	
+	##### perturb in sigma for vega ###########
+	smaller_sigma = (sigma-0.01)
+	larger_sigma = (sigma+0.01)
+	log_step_array_smaller_sigma = (r - 0.5*smaller_sigma**2)*time_step + np.sqrt(time_step)*smaller_sigma*brownian_array
+	log_step_array_larger_sigma = (r - 0.5*larger_sigma**2)*time_step + np.sqrt(time_step)*larger_sigma*brownian_array	
+	log_path_array_smaller_sigma = np.log(S) + np.cumsum( log_step_array_smaller_sigma, axis = 1 ) 
+	log_path_array_larger_sigma = np.log(S) + np.cumsum( log_step_array_larger_sigma, axis = 1 )
+	log_path_array_smaller_sigma = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_smaller_sigma ), axis=1 ) ### add the initial price as the first entry
+	log_path_array_larger_sigma = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_larger_sigma ), axis=1 ) ### add the initial price as the first entry 	 		 	 	
+	terminal_price_array_smaller_sigma = np.exp(log_path_array_smaller_sigma[:, -2])
+	terminal_price_array_larger_sigma = np.exp(log_path_array_larger_sigma[:, -2])
+	
+	##### perturb in t for theta ##############
+	terminal_price_array_smaller_t = np.exp(log_path_array[:, -1])
+	terminal_price_array_larger_t = np.exp(log_path_array[:, -3])
+	
+	#### perturb in r for rho #################
+	log_step_array_smaller_r = (r - 1e-4 - 0.5*sigma**2)*time_step + np.sqrt(time_step)*sigma*brownian_array
+	log_step_array_larger_r = (r + 1e-4 - 0.5*sigma**2)*time_step + np.sqrt(time_step)*sigma*brownian_array	
+	log_path_array_smaller_r = np.log(S) + np.cumsum( log_step_array_smaller_r, axis = 1 ) 
+	log_path_array_larger_r = np.log(S) + np.cumsum( log_step_array_larger_r, axis = 1 )
+	log_path_array_smaller_r = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_smaller_r ), axis=1 ) ### add the initial price as the first entry
+	log_path_array_larger_r = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_larger_r ), axis=1 ) ### add the initial price as the first entry 		
+	terminal_price_array_smaller_r = np.exp(log_path_array_smaller_r[:, -2])
+	terminal_price_array_larger_r = np.exp(log_path_array_larger_r[:, -2])	
 
+	############ Max and minimum prices ###########################
+	MinPrice_array = np.exp( np.min(log_path_array[:, :-1], axis=1, keepdims=True) ) ### ignore the last column as this is the additional time step for theta calculation
+	MaxPrice_array = np.exp( np.max(log_path_array[:, :-1], axis=1, keepdims=True) )
+	
+	
+	MinPrice_array_smaller_S = MinPrice_array*(S-0.01)/S
+	MinPrice_array_larger_S = MinPrice_array*(S+0.01)/S
+	MaxPrice_array_smaller_S = MaxPrice_array*(S-0.01)/S
+	MaxPrice_array_larger_S = MaxPrice_array*(S+0.01)/S
+	
+	MinPrice_array_smaller_sigma =  np.exp( np.min(log_path_array_smaller_sigma[:, :-1], axis=1, keepdims=True) )
+	MinPrice_array_larger_sigma =   np.exp( np.min(log_path_array_larger_sigma[:, :-1], axis=1, keepdims=True) )
+	MaxPrice_array_smaller_sigma =	np.exp( np.max(log_path_array_smaller_sigma[:, :-1], axis=1, keepdims=True) )
+	MaxPrice_array_larger_sigma =   np.exp( np.max(log_path_array_larger_sigma[:, :-1], axis=1, keepdims=True) )
+	
+	MinPrice_array_smaller_t = np.exp( np.min(log_path_array, axis=1, keepdims=True) )  ### keep the last column as this is the additional time step for a longer time to maturity
+	MinPrice_array_larger_t = np.exp( np.min(log_path_array[:, :-2], axis=1, keepdims=True) )  ### ignore the last two columns as the time to maturity is shorter
+	MaxPrice_array_smaller_t = np.exp( np.max(log_path_array, axis=1, keepdims=True) )
+	MaxPrice_array_larger_t = np.exp( np.max(log_path_array[:, :-2], axis=1, keepdims=True) )
+	
+	MinPrice_array_smaller_r = np.exp( np.min(log_path_array_smaller_r[:, :-1], axis=1, keepdims=True) )
+	MinPrice_array_larger_r = np.exp( np.min(log_path_array_larger_r[:, :-1], axis=1, keepdims=True) )
+	MaxPrice_array_smaller_r = np.exp( np.max(log_path_array_smaller_r[:, :-1], axis=1, keepdims=True) )	
+	MaxPrice_array_larger_r = np.exp( np.max(log_path_array_larger_r[:, :-1], axis=1, keepdims=True) )
+
+	#################################################
+	######	Antithetic Pairs of the above ###########
+	brownian_array_AT = -brownian_array	
+	log_step_array_AT = (r - 0.5*sigma**2)*time_step + np.sqrt(time_step)*sigma*brownian_array_AT ### Array of movements in the log of S for each time step
+	log_path_array_AT = np.log(S) + np.cumsum( log_step_array_AT, axis = 1 ) 			### Prices at each time step
+	log_path_array_AT = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_AT ), axis=1 ) ### add the initial price as the first entry
+	
+	#################################################################################
+	#### calculate the terminal prices and store them as a numpy array ####
+	terminal_price_array_AT = np.exp(log_path_array_AT[:, -2])
+	
+	##### perturb in S for Delta and Gamma ####
+	terminal_price_array_smaller_S_AT = terminal_price_array_AT*(S-0.01)/S
+	terminal_price_array_larger_S_AT = terminal_price_array_AT*(S+0.01)/S 	
+	
+	##### perturb in sigma for vega ###########
+	smaller_sigma = (sigma-0.01)
+	larger_sigma = (sigma+0.01)
+	log_step_array_smaller_sigma_AT = (r - 0.5*smaller_sigma**2)*time_step + np.sqrt(time_step)*smaller_sigma*brownian_array_AT
+	log_step_array_larger_sigma_AT = (r - 0.5*larger_sigma**2)*time_step + np.sqrt(time_step)*larger_sigma*brownian_array_AT	
+	log_path_array_smaller_sigma_AT = np.log(S) + np.cumsum( log_step_array_smaller_sigma_AT, axis = 1 ) 
+	log_path_array_larger_sigma_AT = np.log(S) + np.cumsum( log_step_array_larger_sigma_AT, axis = 1 )
+	log_path_array_smaller_sigma_AT = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_smaller_sigma_AT ), axis=1 ) #add the initial price as first entry
+	log_path_array_larger_sigma_AT = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_larger_sigma_AT ), axis=1 ) #add the initial price as the first entry 	 		 	 	
+	terminal_price_array_smaller_sigma_AT = np.exp(log_path_array_smaller_sigma_AT[:, -2])
+	terminal_price_array_larger_sigma_AT = np.exp(log_path_array_larger_sigma_AT[:, -2])
+	
+	##### perturb in t for theta ##############
+	terminal_price_array_smaller_t_AT = np.exp(log_path_array_AT[:, -1])
+	terminal_price_array_larger_t_AT = np.exp(log_path_array_AT[:, -3])
+	
+	#### perturb in r for rho #################
+	log_step_array_smaller_r_AT = (r - 1e-4 - 0.5*sigma**2)*time_step + np.sqrt(time_step)*sigma*brownian_array_AT
+	log_step_array_larger_r_AT = (r + 1e-4 - 0.5*sigma**2)*time_step + np.sqrt(time_step)*sigma*brownian_array_AT	
+	log_path_array_smaller_r_AT = np.log(S) + np.cumsum( log_step_array_smaller_r_AT, axis = 1 ) 
+	log_path_array_larger_r_AT = np.log(S) + np.cumsum( log_step_array_larger_r_AT, axis = 1 )
+	log_path_array_smaller_r_AT = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_smaller_r_AT ), axis=1 ) ### add the initial price as the first entry
+	log_path_array_larger_r_AT = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_larger_r_AT ), axis=1 ) ### add the initial price as the first entry 		
+	terminal_price_array_smaller_r_AT = np.exp(log_path_array_smaller_r_AT[:, -2])
+	terminal_price_array_larger_r_AT = np.exp(log_path_array_larger_r_AT[:, -2])	
+
+	############ Max and minimum prices ###########################
+	MinPrice_array_AT = np.exp( np.min(log_path_array_AT[:, :-1], axis=1, keepdims=True) ) ### ignore the last column as this is the additional time step for theta calculation
+	MaxPrice_array_AT = np.exp( np.max(log_path_array_AT[:, :-1], axis=1, keepdims=True) )
+	
+	
+	MinPrice_array_smaller_S_AT = MinPrice_array_AT*(S-0.01)/S
+	MinPrice_array_larger_S_AT = MinPrice_array_AT*(S+0.01)/S
+	MaxPrice_array_smaller_S_AT = MaxPrice_array_AT*(S-0.01)/S
+	MaxPrice_array_larger_S_AT = MaxPrice_array_AT*(S+0.01)/S
+	
+	MinPrice_array_smaller_sigma_AT =  np.exp( np.min(log_path_array_smaller_sigma_AT[:, :-1], axis=1, keepdims=True) )
+	MinPrice_array_larger_sigma_AT =   np.exp( np.min(log_path_array_larger_sigma_AT[:, :-1], axis=1, keepdims=True) )
+	MaxPrice_array_smaller_sigma_AT = np.exp( np.max(log_path_array_smaller_sigma_AT[:, :-1], axis=1, keepdims=True) )
+	MaxPrice_array_larger_sigma_AT = np.exp( np.max(log_path_array_larger_sigma_AT[:, :-1], axis=1, keepdims=True) )
+	
+	MinPrice_array_smaller_t_AT = np.exp( np.min(log_path_array_AT, axis=1, keepdims=True) )  ### keep the last column as this is the additional time step for a longer time to maturity
+	MinPrice_array_larger_t_AT = np.exp( np.min(log_path_array_AT[:, :-2], axis=1, keepdims=True) )  ### ignore the last two columns as the time to maturity is shorter
+	MaxPrice_array_smaller_t_AT = np.exp( np.max(log_path_array_AT, axis=1, keepdims=True) )
+	MaxPrice_array_larger_t_AT = np.exp( np.max(log_path_array_AT[:, :-2], axis=1, keepdims=True) )
+	
+	MinPrice_array_smaller_r_AT = np.exp( np.min(log_path_array_smaller_r_AT[:, :-1], axis=1, keepdims=True) )
+	MinPrice_array_larger_r_AT = np.exp( np.min(log_path_array_larger_r_AT[:, :-1], axis=1, keepdims=True) )
+	MaxPrice_array_smaller_r_AT = np.exp( np.max(log_path_array_smaller_r_AT[:, :-1], axis=1, keepdims=True) )	
+	MaxPrice_array_larger_r_AT = np.exp( np.max(log_path_array_larger_r_AT[:, :-1], axis=1, keepdims=True) )
+	
+	
+	
+	##### flatten arrays #####
+	terminal_price_array = terminal_price_array.flatten()
+	terminal_price_array_smaller_S = terminal_price_array_smaller_S.flatten()
+	terminal_price_array_larger_S = terminal_price_array_larger_S.flatten() 	
+	terminal_price_array_smaller_sigma = terminal_price_array_smaller_sigma.flatten()
+	terminal_price_array_larger_sigma = terminal_price_array_larger_sigma.flatten()
+	terminal_price_array_smaller_t = terminal_price_array_smaller_t.flatten()
+	terminal_price_array_larger_t = terminal_price_array_larger_t.flatten()
+	terminal_price_array_smaller_r = terminal_price_array_smaller_r.flatten()
+	terminal_price_array_larger_r = terminal_price_array_larger_r.flatten()
+	
+	MinPrice_array = MinPrice_array.flatten()
+	MaxPrice_array = MaxPrice_array.flatten()
+	MinPrice_array_smaller_S = MinPrice_array_smaller_S.flatten() 
+	MinPrice_array_larger_S = MinPrice_array_larger_S.flatten() 
+	MaxPrice_array_smaller_S = MaxPrice_array_smaller_S.flatten() 
+	MaxPrice_array_larger_S = MaxPrice_array_larger_S.flatten() 
+	MinPrice_array_smaller_sigma = MinPrice_array_smaller_sigma.flatten() 
+	MinPrice_array_larger_sigma = MinPrice_array_larger_sigma.flatten()  
+	MaxPrice_array_smaller_sigma = MaxPrice_array_smaller_sigma.flatten()	
+	MaxPrice_array_larger_sigma = MaxPrice_array_larger_sigma.flatten()   	
+	MinPrice_array_smaller_t = MinPrice_array_smaller_t.flatten() 
+	MinPrice_array_larger_t = MinPrice_array_larger_t.flatten() 
+	MaxPrice_array_smaller_t = MaxPrice_array_smaller_t.flatten()
+	MaxPrice_array_larger_t = MaxPrice_array_larger_t.flatten() 	
+	MinPrice_array_smaller_r = MinPrice_array_smaller_r.flatten() 
+	MinPrice_array_larger_r = MinPrice_array_larger_r.flatten() 
+	MaxPrice_array_smaller_r = MaxPrice_array_smaller_r.flatten() 	
+	MaxPrice_array_larger_r = MaxPrice_array_larger_r.flatten()
+	
+	terminal_price_array_AT = terminal_price_array_AT.flatten()
+	terminal_price_array_smaller_S_AT = terminal_price_array_smaller_S_AT.flatten()
+	terminal_price_array_larger_S_AT = terminal_price_array_larger_S_AT.flatten() 	
+	terminal_price_array_smaller_sigma_AT = terminal_price_array_smaller_sigma_AT.flatten()
+	terminal_price_array_larger_sigma_AT = terminal_price_array_larger_sigma_AT.flatten()
+	terminal_price_array_smaller_t_AT = terminal_price_array_smaller_t_AT.flatten()
+	terminal_price_array_larger_t_AT = terminal_price_array_larger_t_AT.flatten()
+	terminal_price_array_smaller_r_AT = terminal_price_array_smaller_r_AT.flatten()
+	terminal_price_array_larger_r_AT = terminal_price_array_larger_r_AT.flatten()
+	
+	MinPrice_array_AT = MinPrice_array_AT.flatten()
+	MaxPrice_array_AT = MaxPrice_array_AT.flatten()
+	MinPrice_array_smaller_S_AT = MinPrice_array_smaller_S_AT.flatten() 
+	MinPrice_array_larger_S_AT = MinPrice_array_larger_S_AT.flatten() 
+	MaxPrice_array_smaller_S_AT = MaxPrice_array_smaller_S_AT.flatten() 
+	MaxPrice_array_larger_S_AT = MaxPrice_array_larger_S_AT.flatten() 
+	MinPrice_array_smaller_sigma_AT = MinPrice_array_smaller_sigma_AT.flatten() 
+	MinPrice_array_larger_sigma_AT = MinPrice_array_larger_sigma_AT.flatten()  
+	MaxPrice_array_smaller_sigma_AT = MaxPrice_array_smaller_sigma_AT.flatten()	
+	MaxPrice_array_larger_sigma_AT = MaxPrice_array_larger_sigma_AT.flatten()   	
+	MinPrice_array_smaller_t_AT = MinPrice_array_smaller_t_AT.flatten() 
+	MinPrice_array_larger_t_AT = MinPrice_array_larger_t_AT.flatten() 
+	MaxPrice_array_smaller_t_AT = MaxPrice_array_smaller_t_AT.flatten()
+	MaxPrice_array_larger_t_AT = MaxPrice_array_larger_t_AT.flatten() 	
+	MinPrice_array_smaller_r_AT = MinPrice_array_smaller_r_AT.flatten() 
+	MinPrice_array_larger_r_AT = MinPrice_array_larger_r_AT.flatten() 
+	MaxPrice_array_smaller_r_AT = MaxPrice_array_smaller_r_AT.flatten() 	
+	MaxPrice_array_larger_r_AT = MaxPrice_array_larger_r_AT.flatten()		
+	
+	#### concatenate ####
+
+	terminal_price_array = np.concatenate( (terminal_price_array, terminal_price_array_AT) )
+	terminal_price_array_smaller_S = np.concatenate(( terminal_price_array_smaller_S, terminal_price_array_smaller_S_AT  ) )
+	terminal_price_array_larger_S = np.concatenate(( terminal_price_array_larger_S, terminal_price_array_larger_S_AT  ) ) 	
+	terminal_price_array_smaller_sigma = np.concatenate(( terminal_price_array_smaller_sigma, terminal_price_array_smaller_sigma_AT  ) )
+	terminal_price_array_larger_sigma = np.concatenate(( terminal_price_array_larger_sigma, terminal_price_array_larger_sigma_AT  ) )
+	terminal_price_array_smaller_t = np.concatenate(( terminal_price_array_smaller_t, terminal_price_array_smaller_t_AT  ) )
+	terminal_price_array_larger_t = np.concatenate(( terminal_price_array_larger_t, terminal_price_array_larger_t_AT  ) )
+	terminal_price_array_smaller_r = np.concatenate(( terminal_price_array_smaller_r, terminal_price_array_smaller_r_AT  ) )
+	terminal_price_array_larger_r = np.concatenate(( terminal_price_array_larger_r, terminal_price_array_larger_r_AT ) )
+
+	MinPrice_array = np.concatenate( (MinPrice_array, MinPrice_array_AT ) )
+	MaxPrice_array = np.concatenate( (MaxPrice_array, MaxPrice_array_AT ) )
+	MinPrice_array_smaller_S = np.concatenate( (MinPrice_array_smaller_S, MinPrice_array_smaller_S_AT ) ) 
+	MinPrice_array_larger_S = np.concatenate( (MinPrice_array_larger_S, MinPrice_array_larger_S_AT ) )
+	MaxPrice_array_smaller_S = np.concatenate( (MaxPrice_array_smaller_S, MaxPrice_array_smaller_S_AT ) ) 
+	MaxPrice_array_larger_S = np.concatenate( (MaxPrice_array_larger_S, MaxPrice_array_larger_S_AT ) )
+	MinPrice_array_smaller_sigma = np.concatenate( (MinPrice_array_smaller_sigma, MinPrice_array_smaller_sigma_AT ) ) 
+	MinPrice_array_larger_sigma = np.concatenate( (MinPrice_array_larger_sigma, MinPrice_array_larger_sigma_AT ) )  
+	MaxPrice_array_smaller_sigma = np.concatenate( (MaxPrice_array_smaller_sigma, MaxPrice_array_smaller_sigma_AT ) )	
+	MaxPrice_array_larger_sigma = np.concatenate( (MaxPrice_array_larger_sigma, MaxPrice_array_larger_sigma_AT ) )   	
+	MinPrice_array_smaller_t = np.concatenate( (MinPrice_array_smaller_t, MinPrice_array_smaller_t_AT ) ) 
+	MinPrice_array_larger_t = np.concatenate( (MinPrice_array_larger_t, MinPrice_array_larger_t_AT ) ) 
+	MaxPrice_array_smaller_t = np.concatenate( (MaxPrice_array_smaller_t, MaxPrice_array_smaller_t_AT ) )
+	MaxPrice_array_larger_t = np.concatenate( (MaxPrice_array_larger_t, MaxPrice_array_larger_t_AT ) ) 	
+	MinPrice_array_smaller_r = np.concatenate( (MinPrice_array_smaller_r, MinPrice_array_smaller_r_AT ) ) 
+	MinPrice_array_larger_r = np.concatenate( (MinPrice_array_larger_r, MinPrice_array_larger_r_AT ) ) 
+	MaxPrice_array_smaller_r = np.concatenate( (MaxPrice_array_smaller_r, MaxPrice_array_smaller_r_AT ) ) 	
+	MaxPrice_array_larger_r = np.concatenate( (MaxPrice_array_larger_r, MaxPrice_array_larger_r_AT ) )
+		
+
+	############################################################### 
 
 	# Check is starting price is above or below the knock-out barrier. This tells us whether we are to use the MinPrices or MaxPrices over the stock prices to determine whether the option gets knocked-out			
 	if S > KnockInBarrier:
-		full_terminal_price_df['KnockInFilter'] = full_terminal_price_df['MinPrice'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_smaller_S'] = full_terminal_price_df['MinPrice_smaller_S'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_larger_S'] = full_terminal_price_df['MinPrice_larger_S'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_smaller_sigma'] = full_terminal_price_df['MinPrice_smaller_sigma'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_larger_sigma'] = full_terminal_price_df['MinPrice_larger_sigma'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_smaller_t'] = full_terminal_price_df['MinPrice_smaller_t'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_larger_t'] = full_terminal_price_df['MinPrice_larger_t'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_smaller_r'] = full_terminal_price_df['MinPrice_smaller_r'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_larger_r'] = full_terminal_price_df['MinPrice_larger_r'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)	
-		
-		full_terminal_price_df['KnockInFilter_AT'] = full_terminal_price_df['MinPrice_AT'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_smaller_S_AT'] = full_terminal_price_df['MinPrice_smaller_S_AT'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_larger_S_AT'] = full_terminal_price_df['MinPrice_larger_S_AT'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_smaller_sigma_AT'] = full_terminal_price_df['MinPrice_smaller_sigma_AT'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_larger_sigma_AT'] = full_terminal_price_df['MinPrice_larger_sigma_AT'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_smaller_t_AT'] = full_terminal_price_df['MinPrice_smaller_t_AT'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_larger_t_AT'] = full_terminal_price_df['MinPrice_larger_t_AT'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_smaller_r_AT'] = full_terminal_price_df['MinPrice_smaller_r_AT'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_larger_r_AT'] = full_terminal_price_df['MinPrice_larger_r_AT'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
+		KnockInFilter_array = np.where(MinPrice_array > KnockInBarrier, 0, 1)
+		KnockInFilter_array_smaller_S = np.where(MinPrice_array_smaller_S > KnockInBarrier, 0, 1)
+		KnockInFilter_array_larger_S =  np.where(MinPrice_array_larger_S > KnockInBarrier, 0, 1)
+		KnockInFilter_array_smaller_sigma = np.where(MinPrice_array_smaller_sigma > KnockInBarrier, 0, 1)
+		KnockInFilter_array_larger_sigma = np.where(MinPrice_array_larger_sigma > KnockInBarrier, 0, 1)
+		KnockInFilter_array_smaller_t = np.where(MinPrice_array_smaller_t > KnockInBarrier, 0, 1)
+		KnockInFilter_array_larger_t = np.where(MinPrice_array_larger_t > KnockInBarrier, 0, 1)
+		KnockInFilter_array_smaller_r = np.where(MinPrice_array_smaller_r > KnockInBarrier, 0, 1) 
+		KnockInFilter_array_larger_r = np.where(MinPrice_array_larger_r > KnockInBarrier, 0, 1)		
 	else:
-		full_terminal_price_df['KnockInFilter'] = full_terminal_price_df['MaxPrice'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_smaller_S'] = full_terminal_price_df['MaxPrice_smaller_S'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_larger_S'] = full_terminal_price_df['MaxPrice_larger_S'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_smaller_sigma'] = full_terminal_price_df['MaxPrice_smaller_sigma'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_larger_sigma'] = full_terminal_price_df['MaxPrice_larger_sigma'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_smaller_t'] = full_terminal_price_df['MaxPrice_smaller_t'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_larger_t'] = full_terminal_price_df['MaxPrice_larger_t'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_smaller_r'] = full_terminal_price_df['MaxPrice_smaller_r'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_larger_r'] = full_terminal_price_df['MaxPrice_larger_r'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_AT'] = full_terminal_price_df['MaxPrice_AT'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
-		
-		full_terminal_price_df['KnockInFilter_smaller_S_AT'] = full_terminal_price_df['MaxPrice_smaller_S_AT'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_larger_S_AT'] = full_terminal_price_df['MaxPrice_larger_S_AT'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_smaller_sigma_AT'] = full_terminal_price_df['MaxPrice_smaller_sigma_AT'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_larger_sigma_AT'] = full_terminal_price_df['MaxPrice_larger_sigma_AT'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_smaller_t_AT'] = full_terminal_price_df['MaxPrice_smaller_t_AT'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_larger_t_AT'] = full_terminal_price_df['MaxPrice_larger_t_AT'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_smaller_r_AT'] = full_terminal_price_df['MaxPrice_smaller_r_AT'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_larger_r_AT'] = full_terminal_price_df['MaxPrice_larger_r_AT'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
+		KnockInFilter_array = np.where(MaxPrice_array > KnockInBarrier, 1, 0)
+		KnockInFilter_array_smaller_S = np.where(MaxPrice_array_smaller_S > KnockInBarrier, 1, 0)
+		KnockInFilter_array_larger_S =  np.where(MaxPrice_array_larger_S > KnockInBarrier, 1, 0)
+		KnockInFilter_array_smaller_sigma = np.where(MaxPrice_array_smaller_sigma > KnockInBarrier, 1, 0)
+		KnockInFilter_array_larger_sigma = np.where(MaxPrice_array_larger_sigma > KnockInBarrier, 1, 0)
+		KnockInFilter_array_smaller_t = np.where(MaxPrice_array_smaller_t > KnockInBarrier, 1, 0)
+		KnockInFilter_array_larger_t = np.where(MaxPrice_array_larger_t > KnockInBarrier, 1, 0)
+		KnockInFilter_array_smaller_r = np.where(MaxPrice_array_smaller_r > KnockInBarrier, 1, 0) 
+		KnockInFilter_array_larger_r = np.where(MaxPrice_array_larger_r > KnockInBarrier, 1, 0)	
+
+
 	
 	###### CALCULATE THE OPTION PRICE ###################
-	### extract "central" terminal price array #######
-	terminal_price_array = np.concatenate(( full_terminal_price_df['terminal_price'].to_numpy() , full_terminal_price_df['terminal_price_AT'].to_numpy() ))
-	KnockInFilter_array = np.concatenate(( full_terminal_price_df['KnockInFilter'].to_numpy() , full_terminal_price_df['KnockInFilter_AT'].to_numpy() ))
-	
-	### initialize option payoff array to zero values ####	
-	payoff_array = np.zeros(2*n_simulations)
-	
 	#### calculate the option payoff for each of the terminal prices #####
 	payoff_array = np.maximum(terminal_price_array-K, 0)
 	
@@ -808,15 +762,11 @@ def MonteCarloKnockInEuropeanCallWithGreeks(S, K, r, sigma, t, T, KnockInBarrier
 	option_value_StandardError = stats.sem(option_value_array)
 	
 	############## THE GREEKS ######################
-	#### Calculate Delta = dV/dS (partial) #########
-	terminal_price_array_smaller_S = np.concatenate(( full_terminal_price_df['terminal_price_smaller_S'].to_numpy(), full_terminal_price_df['terminal_price_smaller_S_AT'].to_numpy() ))
-	KnockInFilter_array_smaller_S = np.concatenate(( full_terminal_price_df['KnockInFilter_smaller_S'].to_numpy(), full_terminal_price_df['KnockInFilter_smaller_S_AT'].to_numpy() ))	
+	#### Calculate Delta = dV/dS (partial) #########	
 	payoff_array_smaller_S = np.maximum(terminal_price_array_smaller_S-K, 0)
 	payoff_array_smaller_S = payoff_array_smaller_S*KnockInFilter_array_smaller_S ### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 	option_value_array_smaller_S = np.exp(-r*(T-t))*payoff_array_smaller_S	
 	
-	terminal_price_array_larger_S = np.concatenate(( full_terminal_price_df['terminal_price_larger_S'].to_numpy(), full_terminal_price_df['terminal_price_larger_S_AT'].to_numpy() ))
-	KnockInFilter_array_larger_S = np.concatenate(( full_terminal_price_df['KnockInFilter_larger_S'].to_numpy(), full_terminal_price_df['KnockInFilter_larger_S_AT'].to_numpy() ))
 	payoff_array_larger_S = np.maximum(terminal_price_array_larger_S-K, 0)
 	payoff_array_larger_S = payoff_array_larger_S*KnockInFilter_array_larger_S ### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 	option_value_array_larger_S = np.exp(-r*(T-t))*payoff_array_larger_S
@@ -832,15 +782,10 @@ def MonteCarloKnockInEuropeanCallWithGreeks(S, K, r, sigma, t, T, KnockInBarrier
 	gamma_StandardError = stats.sem(gamma_array)
 
 	#### Calculate Vega = dV/dsigma (partial) ######
-	
-	terminal_price_array_smaller_sigma = np.concatenate(( full_terminal_price_df['terminal_price_smaller_sigma'].to_numpy(), full_terminal_price_df['terminal_price_smaller_sigma_AT'].to_numpy() ))
-	KnockInFilter_array_smaller_sigma = np.concatenate(( full_terminal_price_df['KnockInFilter_smaller_sigma'].to_numpy(), full_terminal_price_df['KnockInFilter_smaller_sigma_AT'].to_numpy() ))
 	payoff_array_smaller_sigma = np.maximum(terminal_price_array_smaller_sigma-K, 0)
 	payoff_array_smaller_sigma = payoff_array_smaller_sigma*KnockInFilter_array_smaller_sigma ### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 	option_value_array_smaller_sigma = np.exp(-r*(T-t))*payoff_array_smaller_sigma
 	
-	terminal_price_array_larger_sigma = np.concatenate(( full_terminal_price_df['terminal_price_larger_sigma'].to_numpy(), full_terminal_price_df['terminal_price_larger_sigma_AT'].to_numpy() ))
-	KnockInFilter_array_larger_sigma = np.concatenate(( full_terminal_price_df['KnockInFilter_larger_sigma'].to_numpy(), full_terminal_price_df['KnockInFilter_larger_sigma_AT'].to_numpy() ))
 	payoff_array_larger_sigma = np.maximum(terminal_price_array_larger_sigma-K, 0)
 	payoff_array_larger_sigma = payoff_array_larger_sigma*KnockInFilter_array_larger_sigma ### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 	option_value_array_larger_sigma = np.exp(-r*(T-t))*payoff_array_larger_sigma
@@ -850,15 +795,9 @@ def MonteCarloKnockInEuropeanCallWithGreeks(S, K, r, sigma, t, T, KnockInBarrier
 	vega_StandardError = stats.sem(vega_array)
 	
 	#### Calculate Theta = -dV/dt (partial)  #######
-	
-	terminal_price_array_smaller_t = np.concatenate(( full_terminal_price_df['terminal_price_smaller_t'].to_numpy(), full_terminal_price_df['terminal_price_smaller_t_AT'].to_numpy() ))
-	KnockInFilter_array_smaller_t = np.concatenate(( full_terminal_price_df['KnockInFilter_smaller_t'].to_numpy(), full_terminal_price_df['KnockInFilter_smaller_t_AT'].to_numpy() ))
 	payoff_array_smaller_t = np.maximum(terminal_price_array_smaller_t-K, 0)
 	payoff_array_smaller_t = payoff_array_smaller_t*KnockInFilter_array_smaller_t ### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 
-	
-	terminal_price_array_larger_t = np.concatenate(( full_terminal_price_df['terminal_price_larger_t'].to_numpy(), full_terminal_price_df['terminal_price_larger_t_AT'].to_numpy() ))
-	KnockInFilter_array_larger_t = np.concatenate(( full_terminal_price_df['KnockInFilter_larger_t'].to_numpy(), full_terminal_price_df['KnockInFilter_larger_t_AT'].to_numpy() ))
 	payoff_array_larger_t = np.maximum(terminal_price_array_larger_t-K, 0)
 	payoff_array_larger_t = payoff_array_larger_t*KnockInFilter_array_larger_t ### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 	
@@ -872,15 +811,10 @@ def MonteCarloKnockInEuropeanCallWithGreeks(S, K, r, sigma, t, T, KnockInBarrier
 	theta_value = np.mean(theta_array)
 	theta_StandardError = stats.sem(theta_array)
 	
-	#### Calculate Rho = dV/dr (partial)   #########
-	
-	terminal_price_array_smaller_r = np.concatenate(( full_terminal_price_df['terminal_price_smaller_r'].to_numpy(), full_terminal_price_df['terminal_price_smaller_r_AT'].to_numpy() ))
-	KnockInFilter_array_smaller_r = np.concatenate(( full_terminal_price_df['KnockInFilter_smaller_r'].to_numpy(), full_terminal_price_df['KnockInFilter_smaller_r_AT'].to_numpy() ))	
+	#### Calculate Rho = dV/dr (partial)   #########	
 	payoff_array_smaller_r = np.maximum(terminal_price_array_smaller_r-K, 0)	
 	payoff_array_smaller_r = payoff_array_smaller_r*KnockInFilter_array_smaller_r 	### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 	
-	terminal_price_array_larger_r = np.concatenate(( full_terminal_price_df['terminal_price_larger_r'].to_numpy(), full_terminal_price_df['terminal_price_larger_r_AT'].to_numpy() ))
-	KnockInFilter_array_larger_r = np.concatenate(( full_terminal_price_df['KnockInFilter_larger_r'].to_numpy(), full_terminal_price_df['KnockInFilter_larger_r_AT'].to_numpy() ))	
 	payoff_array_larger_r = np.maximum(terminal_price_array_larger_r-K, 0)
 	payoff_array_larger_r = payoff_array_larger_r*KnockInFilter_array_larger_r	### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 	
@@ -945,70 +879,256 @@ def MonteCarloKnockOutEuropeanCallWithGreeks(S, K, r, sigma, t, T, KnockOutBarri
 	KnockOutBarrier = CorrectionFactor*KnockOutBarrier
 	###
 	
-	#### calculate the terminal prices and store them as a list ####
-	#### use multiple processors to speed up the simulations #######
-	seed_number_array = np.arange(n_simulations) + BaseSeed
-
-	args = [(S, r, sigma, t, T, n_steps, seed) for seed in seed_number_array]
+	### Calculate the evolution of the stock price - vectorized approach ############
+	#################################################################################
+	rng = np.random.default_rng(BaseSeed)
+	brownian_array = rng.normal(0, 1, size=(n_simulations,n_steps+1))			### Generate a Brownian motion array - 1 additional step for when we calculate theta
+	log_step_array = (r - 0.5*sigma**2)*time_step + np.sqrt(time_step)*sigma*brownian_array ### Array of movements in the log of S for each time step
+	log_path_array = np.log(S) + np.cumsum( log_step_array, axis = 1 ) 			### Prices at each time step
+	log_path_array = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array ), axis=1 ) ### add the initial price as the first entry
 	
-	with mp.Pool() as pool:
-		full_terminal_price_array = pool.starmap(generate_terminal_price_ForGreeks_withMinMaxPrice_Antithetic, args)
-
-	#### 
-	full_terminal_price_array = np.array(full_terminal_price_array)
+	#################################################################################
+	#### calculate the terminal prices and store them as a numpy array ####
+	terminal_price_array = np.exp(log_path_array[:, -2])
 	
-	full_terminal_price_df = pd.DataFrame(full_terminal_price_array, columns=['terminal_price', 'terminal_price_smaller_S', 'terminal_price_larger_S', 'terminal_price_smaller_sigma', 'terminal_price_larger_sigma', 'terminal_price_smaller_t', 'terminal_price_larger_t', 'terminal_price_smaller_r', 'terminal_price_larger_r', 'MinPrice', 'MaxPrice', 'MinPrice_smaller_S', 'MaxPrice_smaller_S', 'MinPrice_larger_S', 'MaxPrice_larger_S', 'MinPrice_smaller_sigma', 'MaxPrice_smaller_sigma', 'MinPrice_larger_sigma', 'MaxPrice_larger_sigma', 'MinPrice_smaller_t', 'MaxPrice_smaller_t', 'MinPrice_larger_t', 'MaxPrice_larger_t', 'MinPrice_smaller_r', 'MaxPrice_smaller_r',  'MinPrice_larger_r', 'MaxPrice_larger_r', 'terminal_price_AT', 'terminal_price_smaller_S_AT', 'terminal_price_larger_S_AT', 'terminal_price_smaller_sigma_AT', 'terminal_price_larger_sigma_AT', 'terminal_price_smaller_t_AT', 'terminal_price_larger_t_AT', 'terminal_price_smaller_r_AT', 'terminal_price_larger_r_AT', 'MinPrice_AT', 'MaxPrice_AT', 'MinPrice_smaller_S_AT', 'MaxPrice_smaller_S_AT', 'MinPrice_larger_S_AT', 'MaxPrice_larger_S_AT', 'MinPrice_smaller_sigma_AT', 'MaxPrice_smaller_sigma_AT', 'MinPrice_larger_sigma_AT', 'MaxPrice_larger_sigma_AT', 'MinPrice_smaller_t_AT', 'MaxPrice_smaller_t_AT', 'MinPrice_larger_t_AT', 'MaxPrice_larger_t_AT', 'MinPrice_smaller_r_AT', 'MaxPrice_smaller_r_AT',  'MinPrice_larger_r_AT', 'MaxPrice_larger_r_AT'])
+	##### perturb in S for Delta and Gamma ####
+	terminal_price_array_smaller_S = terminal_price_array*(S-0.01)/S
+	terminal_price_array_larger_S = terminal_price_array*(S+0.01)/S 	
+	
+	##### perturb in sigma for vega ###########
+	smaller_sigma = (sigma-0.01)
+	larger_sigma = (sigma+0.01)
+	log_step_array_smaller_sigma = (r - 0.5*smaller_sigma**2)*time_step + np.sqrt(time_step)*smaller_sigma*brownian_array
+	log_step_array_larger_sigma = (r - 0.5*larger_sigma**2)*time_step + np.sqrt(time_step)*larger_sigma*brownian_array	
+	log_path_array_smaller_sigma = np.log(S) + np.cumsum( log_step_array_smaller_sigma, axis = 1 ) 
+	log_path_array_larger_sigma = np.log(S) + np.cumsum( log_step_array_larger_sigma, axis = 1 )
+	log_path_array_smaller_sigma = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_smaller_sigma ), axis=1 ) ### add the initial price as the first entry
+	log_path_array_larger_sigma = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_larger_sigma ), axis=1 ) ### add the initial price as the first entry 	 		 	 	
+	terminal_price_array_smaller_sigma = np.exp(log_path_array_smaller_sigma[:, -2])
+	terminal_price_array_larger_sigma = np.exp(log_path_array_larger_sigma[:, -2])
+	
+	##### perturb in t for theta ##############
+	terminal_price_array_smaller_t = np.exp(log_path_array[:, -1])
+	terminal_price_array_larger_t = np.exp(log_path_array[:, -3])
+	
+	#### perturb in r for rho #################
+	log_step_array_smaller_r = (r - 1e-4 - 0.5*sigma**2)*time_step + np.sqrt(time_step)*sigma*brownian_array
+	log_step_array_larger_r = (r + 1e-4 - 0.5*sigma**2)*time_step + np.sqrt(time_step)*sigma*brownian_array	
+	log_path_array_smaller_r = np.log(S) + np.cumsum( log_step_array_smaller_r, axis = 1 ) 
+	log_path_array_larger_r = np.log(S) + np.cumsum( log_step_array_larger_r, axis = 1 )
+	log_path_array_smaller_r = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_smaller_r ), axis=1 ) ### add the initial price as the first entry
+	log_path_array_larger_r = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_larger_r ), axis=1 ) ### add the initial price as the first entry 		
+	terminal_price_array_smaller_r = np.exp(log_path_array_smaller_r[:, -2])
+	terminal_price_array_larger_r = np.exp(log_path_array_larger_r[:, -2])	
 
+	############ Max and minimum prices ###########################
+	MinPrice_array = np.exp( np.min(log_path_array[:, :-1], axis=1, keepdims=True) ) ### ignore the last column as this is the additional time step for theta calculation
+	MaxPrice_array = np.exp( np.max(log_path_array[:, :-1], axis=1, keepdims=True) )
+	
+	
+	MinPrice_array_smaller_S = MinPrice_array*(S-0.01)/S
+	MinPrice_array_larger_S = MinPrice_array*(S+0.01)/S
+	MaxPrice_array_smaller_S = MaxPrice_array*(S-0.01)/S
+	MaxPrice_array_larger_S = MaxPrice_array*(S+0.01)/S
+	
+	MinPrice_array_smaller_sigma =  np.exp( np.min(log_path_array_smaller_sigma[:, :-1], axis=1, keepdims=True) )
+	MinPrice_array_larger_sigma =   np.exp( np.min(log_path_array_larger_sigma[:, :-1], axis=1, keepdims=True) )
+	MaxPrice_array_smaller_sigma =	np.exp( np.max(log_path_array_smaller_sigma[:, :-1], axis=1, keepdims=True) )
+	MaxPrice_array_larger_sigma =   np.exp( np.max(log_path_array_larger_sigma[:, :-1], axis=1, keepdims=True) )
+	
+	MinPrice_array_smaller_t = np.exp( np.min(log_path_array, axis=1, keepdims=True) )  ### keep the last column as this is the additional time step for a longer time to maturity
+	MinPrice_array_larger_t = np.exp( np.min(log_path_array[:, :-2], axis=1, keepdims=True) )  ### ignore the last two columns as the time to maturity is shorter
+	MaxPrice_array_smaller_t = np.exp( np.max(log_path_array, axis=1, keepdims=True) )
+	MaxPrice_array_larger_t = np.exp( np.max(log_path_array[:, :-2], axis=1, keepdims=True) )
+	
+	MinPrice_array_smaller_r = np.exp( np.min(log_path_array_smaller_r[:, :-1], axis=1, keepdims=True) )
+	MinPrice_array_larger_r = np.exp( np.min(log_path_array_larger_r[:, :-1], axis=1, keepdims=True) )
+	MaxPrice_array_smaller_r = np.exp( np.max(log_path_array_smaller_r[:, :-1], axis=1, keepdims=True) )	
+	MaxPrice_array_larger_r = np.exp( np.max(log_path_array_larger_r[:, :-1], axis=1, keepdims=True) )
+
+	#################################################
+	######	Antithetic Pairs of the above ###########
+	brownian_array_AT = -brownian_array	
+	log_step_array_AT = (r - 0.5*sigma**2)*time_step + np.sqrt(time_step)*sigma*brownian_array_AT ### Array of movements in the log of S for each time step
+	log_path_array_AT = np.log(S) + np.cumsum( log_step_array_AT, axis = 1 ) 			### Prices at each time step
+	log_path_array_AT = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_AT ), axis=1 ) ### add the initial price as the first entry
+	
+	#################################################################################
+	#### calculate the terminal prices and store them as a numpy array ####
+	terminal_price_array_AT = np.exp(log_path_array_AT[:, -2])
+	
+	##### perturb in S for Delta and Gamma ####
+	terminal_price_array_smaller_S_AT = terminal_price_array_AT*(S-0.01)/S
+	terminal_price_array_larger_S_AT = terminal_price_array_AT*(S+0.01)/S 	
+	
+	##### perturb in sigma for vega ###########
+	smaller_sigma = (sigma-0.01)
+	larger_sigma = (sigma+0.01)
+	log_step_array_smaller_sigma_AT = (r - 0.5*smaller_sigma**2)*time_step + np.sqrt(time_step)*smaller_sigma*brownian_array_AT
+	log_step_array_larger_sigma_AT = (r - 0.5*larger_sigma**2)*time_step + np.sqrt(time_step)*larger_sigma*brownian_array_AT	
+	log_path_array_smaller_sigma_AT = np.log(S) + np.cumsum( log_step_array_smaller_sigma_AT, axis = 1 ) 
+	log_path_array_larger_sigma_AT = np.log(S) + np.cumsum( log_step_array_larger_sigma_AT, axis = 1 )
+	log_path_array_smaller_sigma_AT = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_smaller_sigma_AT ), axis=1 ) #add the initial price as first entry
+	log_path_array_larger_sigma_AT = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_larger_sigma_AT ), axis=1 ) #add the initial price as the first entry 	 		 	 	
+	terminal_price_array_smaller_sigma_AT = np.exp(log_path_array_smaller_sigma_AT[:, -2])
+	terminal_price_array_larger_sigma_AT = np.exp(log_path_array_larger_sigma_AT[:, -2])
+	
+	##### perturb in t for theta ##############
+	terminal_price_array_smaller_t_AT = np.exp(log_path_array_AT[:, -1])
+	terminal_price_array_larger_t_AT = np.exp(log_path_array_AT[:, -3])
+	
+	#### perturb in r for rho #################
+	log_step_array_smaller_r_AT = (r - 1e-4 - 0.5*sigma**2)*time_step + np.sqrt(time_step)*sigma*brownian_array_AT
+	log_step_array_larger_r_AT = (r + 1e-4 - 0.5*sigma**2)*time_step + np.sqrt(time_step)*sigma*brownian_array_AT	
+	log_path_array_smaller_r_AT = np.log(S) + np.cumsum( log_step_array_smaller_r_AT, axis = 1 ) 
+	log_path_array_larger_r_AT = np.log(S) + np.cumsum( log_step_array_larger_r_AT, axis = 1 )
+	log_path_array_smaller_r_AT = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_smaller_r_AT ), axis=1 ) ### add the initial price as the first entry
+	log_path_array_larger_r_AT = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_larger_r_AT ), axis=1 ) ### add the initial price as the first entry 		
+	terminal_price_array_smaller_r_AT = np.exp(log_path_array_smaller_r_AT[:, -2])
+	terminal_price_array_larger_r_AT = np.exp(log_path_array_larger_r_AT[:, -2])	
+
+	############ Max and minimum prices ###########################
+	MinPrice_array_AT = np.exp( np.min(log_path_array_AT[:, :-1], axis=1, keepdims=True) ) ### ignore the last column as this is the additional time step for theta calculation
+	MaxPrice_array_AT = np.exp( np.max(log_path_array_AT[:, :-1], axis=1, keepdims=True) )
+	
+	
+	MinPrice_array_smaller_S_AT = MinPrice_array_AT*(S-0.01)/S
+	MinPrice_array_larger_S_AT = MinPrice_array_AT*(S+0.01)/S
+	MaxPrice_array_smaller_S_AT = MaxPrice_array_AT*(S-0.01)/S
+	MaxPrice_array_larger_S_AT = MaxPrice_array_AT*(S+0.01)/S
+	
+	MinPrice_array_smaller_sigma_AT =  np.exp( np.min(log_path_array_smaller_sigma_AT[:, :-1], axis=1, keepdims=True) )
+	MinPrice_array_larger_sigma_AT =   np.exp( np.min(log_path_array_larger_sigma_AT[:, :-1], axis=1, keepdims=True) )
+	MaxPrice_array_smaller_sigma_AT = np.exp( np.max(log_path_array_smaller_sigma_AT[:, :-1], axis=1, keepdims=True) )
+	MaxPrice_array_larger_sigma_AT = np.exp( np.max(log_path_array_larger_sigma_AT[:, :-1], axis=1, keepdims=True) )
+	
+	MinPrice_array_smaller_t_AT = np.exp( np.min(log_path_array_AT, axis=1, keepdims=True) )  ### keep the last column as this is the additional time step for a longer time to maturity
+	MinPrice_array_larger_t_AT = np.exp( np.min(log_path_array_AT[:, :-2], axis=1, keepdims=True) )  ### ignore the last two columns as the time to maturity is shorter
+	MaxPrice_array_smaller_t_AT = np.exp( np.max(log_path_array_AT, axis=1, keepdims=True) )
+	MaxPrice_array_larger_t_AT = np.exp( np.max(log_path_array_AT[:, :-2], axis=1, keepdims=True) )
+	
+	MinPrice_array_smaller_r_AT = np.exp( np.min(log_path_array_smaller_r_AT[:, :-1], axis=1, keepdims=True) )
+	MinPrice_array_larger_r_AT = np.exp( np.min(log_path_array_larger_r_AT[:, :-1], axis=1, keepdims=True) )
+	MaxPrice_array_smaller_r_AT = np.exp( np.max(log_path_array_smaller_r_AT[:, :-1], axis=1, keepdims=True) )	
+	MaxPrice_array_larger_r_AT = np.exp( np.max(log_path_array_larger_r_AT[:, :-1], axis=1, keepdims=True) )
+	
+	
+	
+	##### flatten arrays #####
+	terminal_price_array = terminal_price_array.flatten()
+	terminal_price_array_smaller_S = terminal_price_array_smaller_S.flatten()
+	terminal_price_array_larger_S = terminal_price_array_larger_S.flatten() 	
+	terminal_price_array_smaller_sigma = terminal_price_array_smaller_sigma.flatten()
+	terminal_price_array_larger_sigma = terminal_price_array_larger_sigma.flatten()
+	terminal_price_array_smaller_t = terminal_price_array_smaller_t.flatten()
+	terminal_price_array_larger_t = terminal_price_array_larger_t.flatten()
+	terminal_price_array_smaller_r = terminal_price_array_smaller_r.flatten()
+	terminal_price_array_larger_r = terminal_price_array_larger_r.flatten()
+	
+	MinPrice_array = MinPrice_array.flatten()
+	MaxPrice_array = MaxPrice_array.flatten()
+	MinPrice_array_smaller_S = MinPrice_array_smaller_S.flatten() 
+	MinPrice_array_larger_S = MinPrice_array_larger_S.flatten() 
+	MaxPrice_array_smaller_S = MaxPrice_array_smaller_S.flatten() 
+	MaxPrice_array_larger_S = MaxPrice_array_larger_S.flatten() 
+	MinPrice_array_smaller_sigma = MinPrice_array_smaller_sigma.flatten() 
+	MinPrice_array_larger_sigma = MinPrice_array_larger_sigma.flatten()  
+	MaxPrice_array_smaller_sigma = MaxPrice_array_smaller_sigma.flatten()	
+	MaxPrice_array_larger_sigma = MaxPrice_array_larger_sigma.flatten()   	
+	MinPrice_array_smaller_t = MinPrice_array_smaller_t.flatten() 
+	MinPrice_array_larger_t = MinPrice_array_larger_t.flatten() 
+	MaxPrice_array_smaller_t = MaxPrice_array_smaller_t.flatten()
+	MaxPrice_array_larger_t = MaxPrice_array_larger_t.flatten() 	
+	MinPrice_array_smaller_r = MinPrice_array_smaller_r.flatten() 
+	MinPrice_array_larger_r = MinPrice_array_larger_r.flatten() 
+	MaxPrice_array_smaller_r = MaxPrice_array_smaller_r.flatten() 	
+	MaxPrice_array_larger_r = MaxPrice_array_larger_r.flatten()
+	
+	terminal_price_array_AT = terminal_price_array_AT.flatten()
+	terminal_price_array_smaller_S_AT = terminal_price_array_smaller_S_AT.flatten()
+	terminal_price_array_larger_S_AT = terminal_price_array_larger_S_AT.flatten() 	
+	terminal_price_array_smaller_sigma_AT = terminal_price_array_smaller_sigma_AT.flatten()
+	terminal_price_array_larger_sigma_AT = terminal_price_array_larger_sigma_AT.flatten()
+	terminal_price_array_smaller_t_AT = terminal_price_array_smaller_t_AT.flatten()
+	terminal_price_array_larger_t_AT = terminal_price_array_larger_t_AT.flatten()
+	terminal_price_array_smaller_r_AT = terminal_price_array_smaller_r_AT.flatten()
+	terminal_price_array_larger_r_AT = terminal_price_array_larger_r_AT.flatten()
+	
+	MinPrice_array_AT = MinPrice_array_AT.flatten()
+	MaxPrice_array_AT = MaxPrice_array_AT.flatten()
+	MinPrice_array_smaller_S_AT = MinPrice_array_smaller_S_AT.flatten() 
+	MinPrice_array_larger_S_AT = MinPrice_array_larger_S_AT.flatten() 
+	MaxPrice_array_smaller_S_AT = MaxPrice_array_smaller_S_AT.flatten() 
+	MaxPrice_array_larger_S_AT = MaxPrice_array_larger_S_AT.flatten() 
+	MinPrice_array_smaller_sigma_AT = MinPrice_array_smaller_sigma_AT.flatten() 
+	MinPrice_array_larger_sigma_AT = MinPrice_array_larger_sigma_AT.flatten()  
+	MaxPrice_array_smaller_sigma_AT = MaxPrice_array_smaller_sigma_AT.flatten()	
+	MaxPrice_array_larger_sigma_AT = MaxPrice_array_larger_sigma_AT.flatten()   	
+	MinPrice_array_smaller_t_AT = MinPrice_array_smaller_t_AT.flatten() 
+	MinPrice_array_larger_t_AT = MinPrice_array_larger_t_AT.flatten() 
+	MaxPrice_array_smaller_t_AT = MaxPrice_array_smaller_t_AT.flatten()
+	MaxPrice_array_larger_t_AT = MaxPrice_array_larger_t_AT.flatten() 	
+	MinPrice_array_smaller_r_AT = MinPrice_array_smaller_r_AT.flatten() 
+	MinPrice_array_larger_r_AT = MinPrice_array_larger_r_AT.flatten() 
+	MaxPrice_array_smaller_r_AT = MaxPrice_array_smaller_r_AT.flatten() 	
+	MaxPrice_array_larger_r_AT = MaxPrice_array_larger_r_AT.flatten()		
+	
+	#### concatenate ####
+
+	terminal_price_array = np.concatenate( (terminal_price_array, terminal_price_array_AT) )
+	terminal_price_array_smaller_S = np.concatenate(( terminal_price_array_smaller_S, terminal_price_array_smaller_S_AT  ) )
+	terminal_price_array_larger_S = np.concatenate(( terminal_price_array_larger_S, terminal_price_array_larger_S_AT  ) ) 	
+	terminal_price_array_smaller_sigma = np.concatenate(( terminal_price_array_smaller_sigma, terminal_price_array_smaller_sigma_AT  ) )
+	terminal_price_array_larger_sigma = np.concatenate(( terminal_price_array_larger_sigma, terminal_price_array_larger_sigma_AT  ) )
+	terminal_price_array_smaller_t = np.concatenate(( terminal_price_array_smaller_t, terminal_price_array_smaller_t_AT  ) )
+	terminal_price_array_larger_t = np.concatenate(( terminal_price_array_larger_t, terminal_price_array_larger_t_AT  ) )
+	terminal_price_array_smaller_r = np.concatenate(( terminal_price_array_smaller_r, terminal_price_array_smaller_r_AT  ) )
+	terminal_price_array_larger_r = np.concatenate(( terminal_price_array_larger_r, terminal_price_array_larger_r_AT ) )
+
+	MinPrice_array = np.concatenate( (MinPrice_array, MinPrice_array_AT ) )
+	MaxPrice_array = np.concatenate( (MaxPrice_array, MaxPrice_array_AT ) )
+	MinPrice_array_smaller_S = np.concatenate( (MinPrice_array_smaller_S, MinPrice_array_smaller_S_AT ) ) 
+	MinPrice_array_larger_S = np.concatenate( (MinPrice_array_larger_S, MinPrice_array_larger_S_AT ) )
+	MaxPrice_array_smaller_S = np.concatenate( (MaxPrice_array_smaller_S, MaxPrice_array_smaller_S_AT ) ) 
+	MaxPrice_array_larger_S = np.concatenate( (MaxPrice_array_larger_S, MaxPrice_array_larger_S_AT ) )
+	MinPrice_array_smaller_sigma = np.concatenate( (MinPrice_array_smaller_sigma, MinPrice_array_smaller_sigma_AT ) ) 
+	MinPrice_array_larger_sigma = np.concatenate( (MinPrice_array_larger_sigma, MinPrice_array_larger_sigma_AT ) )  
+	MaxPrice_array_smaller_sigma = np.concatenate( (MaxPrice_array_smaller_sigma, MaxPrice_array_smaller_sigma_AT ) )	
+	MaxPrice_array_larger_sigma = np.concatenate( (MaxPrice_array_larger_sigma, MaxPrice_array_larger_sigma_AT ) )   	
+	MinPrice_array_smaller_t = np.concatenate( (MinPrice_array_smaller_t, MinPrice_array_smaller_t_AT ) ) 
+	MinPrice_array_larger_t = np.concatenate( (MinPrice_array_larger_t, MinPrice_array_larger_t_AT ) ) 
+	MaxPrice_array_smaller_t = np.concatenate( (MaxPrice_array_smaller_t, MaxPrice_array_smaller_t_AT ) )
+	MaxPrice_array_larger_t = np.concatenate( (MaxPrice_array_larger_t, MaxPrice_array_larger_t_AT ) ) 	
+	MinPrice_array_smaller_r = np.concatenate( (MinPrice_array_smaller_r, MinPrice_array_smaller_r_AT ) ) 
+	MinPrice_array_larger_r = np.concatenate( (MinPrice_array_larger_r, MinPrice_array_larger_r_AT ) ) 
+	MaxPrice_array_smaller_r = np.concatenate( (MaxPrice_array_smaller_r, MaxPrice_array_smaller_r_AT ) ) 	
+	MaxPrice_array_larger_r = np.concatenate( (MaxPrice_array_larger_r, MaxPrice_array_larger_r_AT ) )
+	
+	############################################################### 
+	
 	# Check is starting price is above or below the knock-out barrier. This tells us whether we are to use the MinPrices or MaxPrices over the stock prices to determine whether the option gets knocked-out			
 	if S > KnockOutBarrier:
-		full_terminal_price_df['KnockOutFilter'] = full_terminal_price_df['MinPrice'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_smaller_S'] = full_terminal_price_df['MinPrice_smaller_S'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_larger_S'] = full_terminal_price_df['MinPrice_larger_S'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_smaller_sigma'] = full_terminal_price_df['MinPrice_smaller_sigma'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_larger_sigma'] = full_terminal_price_df['MinPrice_larger_sigma'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_smaller_t'] = full_terminal_price_df['MinPrice_smaller_t'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_larger_t'] = full_terminal_price_df['MinPrice_larger_t'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_smaller_r'] = full_terminal_price_df['MinPrice_smaller_r'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_larger_r'] = full_terminal_price_df['MinPrice_larger_r'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
-		
-		full_terminal_price_df['KnockOutFilter_AT'] = full_terminal_price_df['MinPrice_AT'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_smaller_S_AT'] = full_terminal_price_df['MinPrice_smaller_S_AT'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_larger_S_AT'] = full_terminal_price_df['MinPrice_larger_S_AT'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_smaller_sigma_AT'] = full_terminal_price_df['MinPrice_smaller_sigma_AT'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_larger_sigma_AT'] = full_terminal_price_df['MinPrice_larger_sigma_AT'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_smaller_t_AT'] = full_terminal_price_df['MinPrice_smaller_t_AT'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_larger_t_AT'] = full_terminal_price_df['MinPrice_larger_t_AT'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_smaller_r_AT'] = full_terminal_price_df['MinPrice_smaller_r_AT'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_larger_r_AT'] = full_terminal_price_df['MinPrice_larger_r_AT'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
+		KnockOutFilter_array = np.where(MinPrice_array > KnockOutBarrier, 1, 0)
+		KnockOutFilter_array_smaller_S = np.where(MinPrice_array_smaller_S > KnockOutBarrier, 1, 0)
+		KnockOutFilter_array_larger_S =  np.where(MinPrice_array_larger_S > KnockOutBarrier, 1, 0)
+		KnockOutFilter_array_smaller_sigma = np.where(MinPrice_array_smaller_sigma > KnockOutBarrier, 1, 0)
+		KnockOutFilter_array_larger_sigma = np.where(MinPrice_array_larger_sigma > KnockOutBarrier, 1, 0)
+		KnockOutFilter_array_smaller_t = np.where(MinPrice_array_smaller_t > KnockOutBarrier, 1, 0)
+		KnockOutFilter_array_larger_t = np.where(MinPrice_array_larger_t > KnockOutBarrier, 1, 0)
+		KnockOutFilter_array_smaller_r = np.where(MinPrice_array_smaller_r > KnockOutBarrier, 1, 0) 
+		KnockOutFilter_array_larger_r = np.where(MinPrice_array_larger_r > KnockOutBarrier, 1, 0)		
 	else:
-		full_terminal_price_df['KnockOutFilter'] = full_terminal_price_df['MaxPrice'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_smaller_S'] = full_terminal_price_df['MaxPrice_smaller_S'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_larger_S'] = full_terminal_price_df['MaxPrice_larger_S'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_smaller_sigma'] = full_terminal_price_df['MaxPrice_smaller_sigma'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_larger_sigma'] = full_terminal_price_df['MaxPrice_larger_sigma'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_smaller_t'] = full_terminal_price_df['MaxPrice_smaller_t'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_larger_t'] = full_terminal_price_df['MaxPrice_larger_t'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_smaller_r'] = full_terminal_price_df['MaxPrice_smaller_r'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_larger_r'] = full_terminal_price_df['MaxPrice_larger_r'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-		
-		full_terminal_price_df['KnockOutFilter_AT'] = full_terminal_price_df['MaxPrice_AT'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_smaller_S_AT'] = full_terminal_price_df['MaxPrice_smaller_S_AT'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_larger_S_AT'] = full_terminal_price_df['MaxPrice_larger_S_AT'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_smaller_sigma_AT'] = full_terminal_price_df['MaxPrice_smaller_sigma_AT'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_larger_sigma_AT'] = full_terminal_price_df['MaxPrice_larger_sigma_AT'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_smaller_t_AT'] = full_terminal_price_df['MaxPrice_smaller_t_AT'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_larger_t_AT'] = full_terminal_price_df['MaxPrice_larger_t_AT'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_smaller_r_AT'] = full_terminal_price_df['MaxPrice_smaller_r_AT'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_larger_r_AT'] = full_terminal_price_df['MaxPrice_larger_r_AT'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-	
+		KnockOutFilter_array = np.where(MaxPrice_array > KnockOutBarrier, 0, 1)
+		KnockOutFilter_array_smaller_S = np.where(MaxPrice_array_smaller_S > KnockOutBarrier, 0, 1)
+		KnockOutFilter_array_larger_S =  np.where(MaxPrice_array_larger_S > KnockOutBarrier, 0, 1)
+		KnockOutFilter_array_smaller_sigma = np.where(MaxPrice_array_smaller_sigma > KnockOutBarrier, 0, 1)
+		KnockOutFilter_array_larger_sigma = np.where(MaxPrice_array_larger_sigma > KnockOutBarrier, 0, 1)
+		KnockOutFilter_array_smaller_t = np.where(MaxPrice_array_smaller_t > KnockOutBarrier, 0, 1)
+		KnockOutFilter_array_larger_t = np.where(MaxPrice_array_larger_t > KnockOutBarrier, 0, 1)
+		KnockOutFilter_array_smaller_r = np.where(MaxPrice_array_smaller_r > KnockOutBarrier, 0, 1) 
+		KnockOutFilter_array_larger_r = np.where(MaxPrice_array_larger_r > KnockOutBarrier, 0, 1)		
+
 	###### CALCULATE THE OPTION PRICE ###################
-	### extract "central" terminal price array #######
-	terminal_price_array = np.concatenate(( full_terminal_price_df['terminal_price'].to_numpy(), full_terminal_price_df['terminal_price_AT'].to_numpy() ))
-	KnockOutFilter_array = np.concatenate(( full_terminal_price_df['KnockOutFilter'].to_numpy(), full_terminal_price_df['KnockOutFilter_AT'].to_numpy() )) 
-	
-	### initialize option payoff array to zero values ####	
-	payoff_array = np.zeros(2*n_simulations)
-	
 	#### calculate the option payoff for each of the terminal prices #####
 	payoff_array = np.maximum(terminal_price_array-K, 0)
 	
@@ -1025,15 +1145,11 @@ def MonteCarloKnockOutEuropeanCallWithGreeks(S, K, r, sigma, t, T, KnockOutBarri
 	option_value_StandardError = stats.sem(option_value_array)
 	
 	############## THE GREEKS ######################
-	#### Calculate Delta = dV/dS (partial) #########
-	terminal_price_array_smaller_S = np.concatenate(( full_terminal_price_df['terminal_price_smaller_S'].to_numpy(), full_terminal_price_df['terminal_price_smaller_S_AT'].to_numpy() ))
-	KnockOutFilter_array_smaller_S = np.concatenate(( full_terminal_price_df['KnockOutFilter_smaller_S'].to_numpy(), full_terminal_price_df['KnockOutFilter_smaller_S_AT'].to_numpy() ))	
+	#### Calculate Delta = dV/dS (partial) #########	
 	payoff_array_smaller_S = np.maximum(terminal_price_array_smaller_S-K, 0)
 	payoff_array_smaller_S = payoff_array_smaller_S*KnockOutFilter_array_smaller_S ### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 	option_value_array_smaller_S = np.exp(-r*(T-t))*payoff_array_smaller_S	
 	
-	terminal_price_array_larger_S = np.concatenate(( full_terminal_price_df['terminal_price_larger_S'].to_numpy(), full_terminal_price_df['terminal_price_larger_S_AT'].to_numpy() ))
-	KnockOutFilter_array_larger_S = np.concatenate(( full_terminal_price_df['KnockOutFilter_larger_S'].to_numpy(), full_terminal_price_df['KnockOutFilter_larger_S_AT'].to_numpy() ))
 	payoff_array_larger_S = np.maximum(terminal_price_array_larger_S-K, 0)
 	payoff_array_larger_S = payoff_array_larger_S*KnockOutFilter_array_larger_S ### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 	option_value_array_larger_S = np.exp(-r*(T-t))*payoff_array_larger_S
@@ -1049,15 +1165,10 @@ def MonteCarloKnockOutEuropeanCallWithGreeks(S, K, r, sigma, t, T, KnockOutBarri
 	gamma_StandardError = stats.sem(gamma_array)
 
 	#### Calculate Vega = dV/dsigma (partial) ######
-	
-	terminal_price_array_smaller_sigma = np.concatenate(( full_terminal_price_df['terminal_price_smaller_sigma'].to_numpy(), full_terminal_price_df['terminal_price_smaller_sigma_AT'].to_numpy() ))
-	KnockOutFilter_array_smaller_sigma = np.concatenate(( full_terminal_price_df['KnockOutFilter_smaller_sigma'].to_numpy(), full_terminal_price_df['KnockOutFilter_smaller_sigma_AT'].to_numpy() ))
 	payoff_array_smaller_sigma = np.maximum(terminal_price_array_smaller_sigma-K, 0)
 	payoff_array_smaller_sigma = payoff_array_smaller_sigma*KnockOutFilter_array_smaller_sigma ### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 	option_value_array_smaller_sigma = np.exp(-r*(T-t))*payoff_array_smaller_sigma
 	
-	terminal_price_array_larger_sigma = np.concatenate(( full_terminal_price_df['terminal_price_larger_sigma'].to_numpy(), full_terminal_price_df['terminal_price_larger_sigma_AT'].to_numpy() ))
-	KnockOutFilter_array_larger_sigma = np.concatenate(( full_terminal_price_df['KnockOutFilter_larger_sigma'].to_numpy(), full_terminal_price_df['KnockOutFilter_larger_sigma_AT'].to_numpy() ))
 	payoff_array_larger_sigma = np.maximum(terminal_price_array_larger_sigma-K, 0)
 	payoff_array_larger_sigma = payoff_array_larger_sigma*KnockOutFilter_array_larger_sigma ### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 	option_value_array_larger_sigma = np.exp(-r*(T-t))*payoff_array_larger_sigma
@@ -1067,15 +1178,9 @@ def MonteCarloKnockOutEuropeanCallWithGreeks(S, K, r, sigma, t, T, KnockOutBarri
 	vega_StandardError = stats.sem(vega_array)
 	
 	#### Calculate Theta = -dV/dt (partial)  #######
-	
-	terminal_price_array_smaller_t = np.concatenate(( full_terminal_price_df['terminal_price_smaller_t'].to_numpy(), full_terminal_price_df['terminal_price_smaller_t_AT'].to_numpy() ))
-	KnockOutFilter_array_smaller_t = np.concatenate(( full_terminal_price_df['KnockOutFilter_smaller_t'].to_numpy(), full_terminal_price_df['KnockOutFilter_smaller_t_AT'].to_numpy() ))
 	payoff_array_smaller_t = np.maximum(terminal_price_array_smaller_t-K, 0)
 	payoff_array_smaller_t = payoff_array_smaller_t*KnockOutFilter_array_smaller_t ### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 
-	
-	terminal_price_array_larger_t = np.concatenate(( full_terminal_price_df['terminal_price_larger_t'].to_numpy(), full_terminal_price_df['terminal_price_larger_t_AT'].to_numpy() ))
-	KnockOutFilter_array_larger_t = np.concatenate(( full_terminal_price_df['KnockOutFilter_larger_t'].to_numpy(), full_terminal_price_df['KnockOutFilter_larger_t_AT'].to_numpy() ))
 	payoff_array_larger_t = np.maximum(terminal_price_array_larger_t-K, 0)
 	payoff_array_larger_t = payoff_array_larger_t*KnockOutFilter_array_larger_t ### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 	
@@ -1090,14 +1195,9 @@ def MonteCarloKnockOutEuropeanCallWithGreeks(S, K, r, sigma, t, T, KnockOutBarri
 	theta_StandardError = stats.sem(theta_array)
 	
 	#### Calculate Rho = dV/dr (partial)   #########
-	
-	terminal_price_array_smaller_r = np.concatenate(( full_terminal_price_df['terminal_price_smaller_r'].to_numpy(), full_terminal_price_df['terminal_price_smaller_r_AT'].to_numpy() ))
-	KnockOutFilter_array_smaller_r = np.concatenate(( full_terminal_price_df['KnockOutFilter_smaller_r'].to_numpy(), full_terminal_price_df['KnockOutFilter_smaller_r_AT'].to_numpy() ))
 	payoff_array_smaller_r = np.maximum(terminal_price_array_smaller_r-K, 0)	
 	payoff_array_smaller_r = payoff_array_smaller_r*KnockOutFilter_array_smaller_r 	### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 	
-	terminal_price_array_larger_r = np.concatenate(( full_terminal_price_df['terminal_price_larger_r'].to_numpy(), full_terminal_price_df['terminal_price_larger_r_AT'].to_numpy() ))
-	KnockOutFilter_array_larger_r = np.concatenate(( full_terminal_price_df['KnockOutFilter_larger_r'].to_numpy(), full_terminal_price_df['KnockOutFilter_larger_r_AT'].to_numpy() ))	
 	payoff_array_larger_r = np.maximum(terminal_price_array_larger_r-K, 0)
 	payoff_array_larger_r = payoff_array_larger_r*KnockOutFilter_array_larger_r	### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 	
@@ -1163,70 +1263,260 @@ def MonteCarloKnockInEuropeanPutWithGreeks(S, K, r, sigma, t, T, KnockInBarrier,
 	KnockInBarrier = CorrectionFactor*KnockInBarrier
 	###
 	
-	#### calculate the terminal prices and store them as a list ####
-	#### use multiple processors to speed up the simulations #######
-	seed_number_array = np.arange(n_simulations) + BaseSeed
-
-	args = [(S, r, sigma, t, T, n_steps, seed) for seed in seed_number_array]
+	### Calculate the evolution of the stock price - vectorized approach ############
+	#################################################################################
+	rng = np.random.default_rng(BaseSeed)
+	brownian_array = rng.normal(0, 1, size=(n_simulations,n_steps+1))			### Generate a Brownian motion array - 1 additional step for when we calculate theta
+	log_step_array = (r - 0.5*sigma**2)*time_step + np.sqrt(time_step)*sigma*brownian_array ### Array of movements in the log of S for each time step
+	log_path_array = np.log(S) + np.cumsum( log_step_array, axis = 1 ) 			### Prices at each time step
+	log_path_array = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array ), axis=1 ) ### add the initial price as the first entry
 	
-	with mp.Pool() as pool:
-		full_terminal_price_array = pool.starmap(generate_terminal_price_ForGreeks_withMinMaxPrice_Antithetic, args)
-
-	#### 
-	full_terminal_price_array = np.array(full_terminal_price_array)
+	#################################################################################
+	#### calculate the terminal prices and store them as a numpy array ####
+	terminal_price_array = np.exp(log_path_array[:, -2])
 	
-	full_terminal_price_df = pd.DataFrame(full_terminal_price_array, columns=['terminal_price', 'terminal_price_smaller_S', 'terminal_price_larger_S', 'terminal_price_smaller_sigma', 'terminal_price_larger_sigma', 'terminal_price_smaller_t', 'terminal_price_larger_t', 'terminal_price_smaller_r', 'terminal_price_larger_r', 'MinPrice', 'MaxPrice', 'MinPrice_smaller_S', 'MaxPrice_smaller_S', 'MinPrice_larger_S', 'MaxPrice_larger_S', 'MinPrice_smaller_sigma', 'MaxPrice_smaller_sigma', 'MinPrice_larger_sigma', 'MaxPrice_larger_sigma', 'MinPrice_smaller_t', 'MaxPrice_smaller_t', 'MinPrice_larger_t', 'MaxPrice_larger_t', 'MinPrice_smaller_r', 'MaxPrice_smaller_r',  'MinPrice_larger_r', 'MaxPrice_larger_r', 'terminal_price_AT', 'terminal_price_smaller_S_AT', 'terminal_price_larger_S_AT', 'terminal_price_smaller_sigma_AT', 'terminal_price_larger_sigma_AT', 'terminal_price_smaller_t_AT', 'terminal_price_larger_t_AT', 'terminal_price_smaller_r_AT', 'terminal_price_larger_r_AT', 'MinPrice_AT', 'MaxPrice_AT', 'MinPrice_smaller_S_AT', 'MaxPrice_smaller_S_AT', 'MinPrice_larger_S_AT', 'MaxPrice_larger_S_AT', 'MinPrice_smaller_sigma_AT', 'MaxPrice_smaller_sigma_AT', 'MinPrice_larger_sigma_AT', 'MaxPrice_larger_sigma_AT', 'MinPrice_smaller_t_AT', 'MaxPrice_smaller_t_AT', 'MinPrice_larger_t_AT', 'MaxPrice_larger_t_AT', 'MinPrice_smaller_r_AT', 'MaxPrice_smaller_r_AT',  'MinPrice_larger_r_AT', 'MaxPrice_larger_r_AT'])
+	##### perturb in S for Delta and Gamma ####
+	terminal_price_array_smaller_S = terminal_price_array*(S-0.01)/S
+	terminal_price_array_larger_S = terminal_price_array*(S+0.01)/S 	
+	
+	##### perturb in sigma for vega ###########
+	smaller_sigma = (sigma-0.01)
+	larger_sigma = (sigma+0.01)
+	log_step_array_smaller_sigma = (r - 0.5*smaller_sigma**2)*time_step + np.sqrt(time_step)*smaller_sigma*brownian_array
+	log_step_array_larger_sigma = (r - 0.5*larger_sigma**2)*time_step + np.sqrt(time_step)*larger_sigma*brownian_array	
+	log_path_array_smaller_sigma = np.log(S) + np.cumsum( log_step_array_smaller_sigma, axis = 1 ) 
+	log_path_array_larger_sigma = np.log(S) + np.cumsum( log_step_array_larger_sigma, axis = 1 )
+	log_path_array_smaller_sigma = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_smaller_sigma ), axis=1 ) ### add the initial price as the first entry
+	log_path_array_larger_sigma = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_larger_sigma ), axis=1 ) ### add the initial price as the first entry 	 		 	 	
+	terminal_price_array_smaller_sigma = np.exp(log_path_array_smaller_sigma[:, -2])
+	terminal_price_array_larger_sigma = np.exp(log_path_array_larger_sigma[:, -2])
+	
+	##### perturb in t for theta ##############
+	terminal_price_array_smaller_t = np.exp(log_path_array[:, -1])
+	terminal_price_array_larger_t = np.exp(log_path_array[:, -3])
+	
+	#### perturb in r for rho #################
+	log_step_array_smaller_r = (r - 1e-4 - 0.5*sigma**2)*time_step + np.sqrt(time_step)*sigma*brownian_array
+	log_step_array_larger_r = (r + 1e-4 - 0.5*sigma**2)*time_step + np.sqrt(time_step)*sigma*brownian_array	
+	log_path_array_smaller_r = np.log(S) + np.cumsum( log_step_array_smaller_r, axis = 1 ) 
+	log_path_array_larger_r = np.log(S) + np.cumsum( log_step_array_larger_r, axis = 1 )
+	log_path_array_smaller_r = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_smaller_r ), axis=1 ) ### add the initial price as the first entry
+	log_path_array_larger_r = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_larger_r ), axis=1 ) ### add the initial price as the first entry 		
+	terminal_price_array_smaller_r = np.exp(log_path_array_smaller_r[:, -2])
+	terminal_price_array_larger_r = np.exp(log_path_array_larger_r[:, -2])	
 
-	# Check is starting price is above or below the knock-in barrier. This tells us whether we are to use the MinPrices or MaxPrices over the stock prices to determine whether the option gets knocked-in		
+	############ Max and minimum prices ###########################
+	MinPrice_array = np.exp( np.min(log_path_array[:, :-1], axis=1, keepdims=True) ) ### ignore the last column as this is the additional time step for theta calculation
+	MaxPrice_array = np.exp( np.max(log_path_array[:, :-1], axis=1, keepdims=True) )
+	
+	
+	MinPrice_array_smaller_S = MinPrice_array*(S-0.01)/S
+	MinPrice_array_larger_S = MinPrice_array*(S+0.01)/S
+	MaxPrice_array_smaller_S = MaxPrice_array*(S-0.01)/S
+	MaxPrice_array_larger_S = MaxPrice_array*(S+0.01)/S
+	
+	MinPrice_array_smaller_sigma =  np.exp( np.min(log_path_array_smaller_sigma[:, :-1], axis=1, keepdims=True) )
+	MinPrice_array_larger_sigma =   np.exp( np.min(log_path_array_larger_sigma[:, :-1], axis=1, keepdims=True) )
+	MaxPrice_array_smaller_sigma =	np.exp( np.max(log_path_array_smaller_sigma[:, :-1], axis=1, keepdims=True) )
+	MaxPrice_array_larger_sigma =   np.exp( np.max(log_path_array_larger_sigma[:, :-1], axis=1, keepdims=True) )
+	
+	MinPrice_array_smaller_t = np.exp( np.min(log_path_array, axis=1, keepdims=True) )  ### keep the last column as this is the additional time step for a longer time to maturity
+	MinPrice_array_larger_t = np.exp( np.min(log_path_array[:, :-2], axis=1, keepdims=True) )  ### ignore the last two columns as the time to maturity is shorter
+	MaxPrice_array_smaller_t = np.exp( np.max(log_path_array, axis=1, keepdims=True) )
+	MaxPrice_array_larger_t = np.exp( np.max(log_path_array[:, :-2], axis=1, keepdims=True) )
+	
+	MinPrice_array_smaller_r = np.exp( np.min(log_path_array_smaller_r[:, :-1], axis=1, keepdims=True) )
+	MinPrice_array_larger_r = np.exp( np.min(log_path_array_larger_r[:, :-1], axis=1, keepdims=True) )
+	MaxPrice_array_smaller_r = np.exp( np.max(log_path_array_smaller_r[:, :-1], axis=1, keepdims=True) )	
+	MaxPrice_array_larger_r = np.exp( np.max(log_path_array_larger_r[:, :-1], axis=1, keepdims=True) )
+
+	#################################################
+	######	Antithetic Pairs of the above ###########
+	brownian_array_AT = -brownian_array	
+	log_step_array_AT = (r - 0.5*sigma**2)*time_step + np.sqrt(time_step)*sigma*brownian_array_AT ### Array of movements in the log of S for each time step
+	log_path_array_AT = np.log(S) + np.cumsum( log_step_array_AT, axis = 1 ) 			### Prices at each time step
+	log_path_array_AT = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_AT ), axis=1 ) ### add the initial price as the first entry
+	
+	#################################################################################
+	#### calculate the terminal prices and store them as a numpy array ####
+	terminal_price_array_AT = np.exp(log_path_array_AT[:, -2])
+	
+	##### perturb in S for Delta and Gamma ####
+	terminal_price_array_smaller_S_AT = terminal_price_array_AT*(S-0.01)/S
+	terminal_price_array_larger_S_AT = terminal_price_array_AT*(S+0.01)/S 	
+	
+	##### perturb in sigma for vega ###########
+	smaller_sigma = (sigma-0.01)
+	larger_sigma = (sigma+0.01)
+	log_step_array_smaller_sigma_AT = (r - 0.5*smaller_sigma**2)*time_step + np.sqrt(time_step)*smaller_sigma*brownian_array_AT
+	log_step_array_larger_sigma_AT = (r - 0.5*larger_sigma**2)*time_step + np.sqrt(time_step)*larger_sigma*brownian_array_AT	
+	log_path_array_smaller_sigma_AT = np.log(S) + np.cumsum( log_step_array_smaller_sigma_AT, axis = 1 ) 
+	log_path_array_larger_sigma_AT = np.log(S) + np.cumsum( log_step_array_larger_sigma_AT, axis = 1 )
+	log_path_array_smaller_sigma_AT = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_smaller_sigma_AT ), axis=1 ) #add the initial price as first entry
+	log_path_array_larger_sigma_AT = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_larger_sigma_AT ), axis=1 ) #add the initial price as the first entry 	 		 	 	
+	terminal_price_array_smaller_sigma_AT = np.exp(log_path_array_smaller_sigma_AT[:, -2])
+	terminal_price_array_larger_sigma_AT = np.exp(log_path_array_larger_sigma_AT[:, -2])
+	
+	##### perturb in t for theta ##############
+	terminal_price_array_smaller_t_AT = np.exp(log_path_array_AT[:, -1])
+	terminal_price_array_larger_t_AT = np.exp(log_path_array_AT[:, -3])
+	
+	#### perturb in r for rho #################
+	log_step_array_smaller_r_AT = (r - 1e-4 - 0.5*sigma**2)*time_step + np.sqrt(time_step)*sigma*brownian_array_AT
+	log_step_array_larger_r_AT = (r + 1e-4 - 0.5*sigma**2)*time_step + np.sqrt(time_step)*sigma*brownian_array_AT	
+	log_path_array_smaller_r_AT = np.log(S) + np.cumsum( log_step_array_smaller_r_AT, axis = 1 ) 
+	log_path_array_larger_r_AT = np.log(S) + np.cumsum( log_step_array_larger_r_AT, axis = 1 )
+	log_path_array_smaller_r_AT = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_smaller_r_AT ), axis=1 ) ### add the initial price as the first entry
+	log_path_array_larger_r_AT = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_larger_r_AT ), axis=1 ) ### add the initial price as the first entry 		
+	terminal_price_array_smaller_r_AT = np.exp(log_path_array_smaller_r_AT[:, -2])
+	terminal_price_array_larger_r_AT = np.exp(log_path_array_larger_r_AT[:, -2])	
+
+	############ Max and minimum prices ###########################
+	MinPrice_array_AT = np.exp( np.min(log_path_array_AT[:, :-1], axis=1, keepdims=True) ) ### ignore the last column as this is the additional time step for theta calculation
+	MaxPrice_array_AT = np.exp( np.max(log_path_array_AT[:, :-1], axis=1, keepdims=True) )
+	
+	
+	MinPrice_array_smaller_S_AT = MinPrice_array_AT*(S-0.01)/S
+	MinPrice_array_larger_S_AT = MinPrice_array_AT*(S+0.01)/S
+	MaxPrice_array_smaller_S_AT = MaxPrice_array_AT*(S-0.01)/S
+	MaxPrice_array_larger_S_AT = MaxPrice_array_AT*(S+0.01)/S
+	
+	MinPrice_array_smaller_sigma_AT =  np.exp( np.min(log_path_array_smaller_sigma_AT[:, :-1], axis=1, keepdims=True) )
+	MinPrice_array_larger_sigma_AT =   np.exp( np.min(log_path_array_larger_sigma_AT[:, :-1], axis=1, keepdims=True) )
+	MaxPrice_array_smaller_sigma_AT = np.exp( np.max(log_path_array_smaller_sigma_AT[:, :-1], axis=1, keepdims=True) )
+	MaxPrice_array_larger_sigma_AT = np.exp( np.max(log_path_array_larger_sigma_AT[:, :-1], axis=1, keepdims=True) )
+	
+	MinPrice_array_smaller_t_AT = np.exp( np.min(log_path_array_AT, axis=1, keepdims=True) )  ### keep the last column as this is the additional time step for a longer time to maturity
+	MinPrice_array_larger_t_AT = np.exp( np.min(log_path_array_AT[:, :-2], axis=1, keepdims=True) )  ### ignore the last two columns as the time to maturity is shorter
+	MaxPrice_array_smaller_t_AT = np.exp( np.max(log_path_array_AT, axis=1, keepdims=True) )
+	MaxPrice_array_larger_t_AT = np.exp( np.max(log_path_array_AT[:, :-2], axis=1, keepdims=True) )
+	
+	MinPrice_array_smaller_r_AT = np.exp( np.min(log_path_array_smaller_r_AT[:, :-1], axis=1, keepdims=True) )
+	MinPrice_array_larger_r_AT = np.exp( np.min(log_path_array_larger_r_AT[:, :-1], axis=1, keepdims=True) )
+	MaxPrice_array_smaller_r_AT = np.exp( np.max(log_path_array_smaller_r_AT[:, :-1], axis=1, keepdims=True) )	
+	MaxPrice_array_larger_r_AT = np.exp( np.max(log_path_array_larger_r_AT[:, :-1], axis=1, keepdims=True) )
+	
+	
+	
+	##### flatten arrays #####
+	terminal_price_array = terminal_price_array.flatten()
+	terminal_price_array_smaller_S = terminal_price_array_smaller_S.flatten()
+	terminal_price_array_larger_S = terminal_price_array_larger_S.flatten() 	
+	terminal_price_array_smaller_sigma = terminal_price_array_smaller_sigma.flatten()
+	terminal_price_array_larger_sigma = terminal_price_array_larger_sigma.flatten()
+	terminal_price_array_smaller_t = terminal_price_array_smaller_t.flatten()
+	terminal_price_array_larger_t = terminal_price_array_larger_t.flatten()
+	terminal_price_array_smaller_r = terminal_price_array_smaller_r.flatten()
+	terminal_price_array_larger_r = terminal_price_array_larger_r.flatten()
+	
+	MinPrice_array = MinPrice_array.flatten()
+	MaxPrice_array = MaxPrice_array.flatten()
+	MinPrice_array_smaller_S = MinPrice_array_smaller_S.flatten() 
+	MinPrice_array_larger_S = MinPrice_array_larger_S.flatten() 
+	MaxPrice_array_smaller_S = MaxPrice_array_smaller_S.flatten() 
+	MaxPrice_array_larger_S = MaxPrice_array_larger_S.flatten() 
+	MinPrice_array_smaller_sigma = MinPrice_array_smaller_sigma.flatten() 
+	MinPrice_array_larger_sigma = MinPrice_array_larger_sigma.flatten()  
+	MaxPrice_array_smaller_sigma = MaxPrice_array_smaller_sigma.flatten()	
+	MaxPrice_array_larger_sigma = MaxPrice_array_larger_sigma.flatten()   	
+	MinPrice_array_smaller_t = MinPrice_array_smaller_t.flatten() 
+	MinPrice_array_larger_t = MinPrice_array_larger_t.flatten() 
+	MaxPrice_array_smaller_t = MaxPrice_array_smaller_t.flatten()
+	MaxPrice_array_larger_t = MaxPrice_array_larger_t.flatten() 	
+	MinPrice_array_smaller_r = MinPrice_array_smaller_r.flatten() 
+	MinPrice_array_larger_r = MinPrice_array_larger_r.flatten() 
+	MaxPrice_array_smaller_r = MaxPrice_array_smaller_r.flatten() 	
+	MaxPrice_array_larger_r = MaxPrice_array_larger_r.flatten()
+	
+	terminal_price_array_AT = terminal_price_array_AT.flatten()
+	terminal_price_array_smaller_S_AT = terminal_price_array_smaller_S_AT.flatten()
+	terminal_price_array_larger_S_AT = terminal_price_array_larger_S_AT.flatten() 	
+	terminal_price_array_smaller_sigma_AT = terminal_price_array_smaller_sigma_AT.flatten()
+	terminal_price_array_larger_sigma_AT = terminal_price_array_larger_sigma_AT.flatten()
+	terminal_price_array_smaller_t_AT = terminal_price_array_smaller_t_AT.flatten()
+	terminal_price_array_larger_t_AT = terminal_price_array_larger_t_AT.flatten()
+	terminal_price_array_smaller_r_AT = terminal_price_array_smaller_r_AT.flatten()
+	terminal_price_array_larger_r_AT = terminal_price_array_larger_r_AT.flatten()
+	
+	MinPrice_array_AT = MinPrice_array_AT.flatten()
+	MaxPrice_array_AT = MaxPrice_array_AT.flatten()
+	MinPrice_array_smaller_S_AT = MinPrice_array_smaller_S_AT.flatten() 
+	MinPrice_array_larger_S_AT = MinPrice_array_larger_S_AT.flatten() 
+	MaxPrice_array_smaller_S_AT = MaxPrice_array_smaller_S_AT.flatten() 
+	MaxPrice_array_larger_S_AT = MaxPrice_array_larger_S_AT.flatten() 
+	MinPrice_array_smaller_sigma_AT = MinPrice_array_smaller_sigma_AT.flatten() 
+	MinPrice_array_larger_sigma_AT = MinPrice_array_larger_sigma_AT.flatten()  
+	MaxPrice_array_smaller_sigma_AT = MaxPrice_array_smaller_sigma_AT.flatten()	
+	MaxPrice_array_larger_sigma_AT = MaxPrice_array_larger_sigma_AT.flatten()   	
+	MinPrice_array_smaller_t_AT = MinPrice_array_smaller_t_AT.flatten() 
+	MinPrice_array_larger_t_AT = MinPrice_array_larger_t_AT.flatten() 
+	MaxPrice_array_smaller_t_AT = MaxPrice_array_smaller_t_AT.flatten()
+	MaxPrice_array_larger_t_AT = MaxPrice_array_larger_t_AT.flatten() 	
+	MinPrice_array_smaller_r_AT = MinPrice_array_smaller_r_AT.flatten() 
+	MinPrice_array_larger_r_AT = MinPrice_array_larger_r_AT.flatten() 
+	MaxPrice_array_smaller_r_AT = MaxPrice_array_smaller_r_AT.flatten() 	
+	MaxPrice_array_larger_r_AT = MaxPrice_array_larger_r_AT.flatten()		
+	
+	#### concatenate ####
+
+	terminal_price_array = np.concatenate( (terminal_price_array, terminal_price_array_AT) )
+	terminal_price_array_smaller_S = np.concatenate(( terminal_price_array_smaller_S, terminal_price_array_smaller_S_AT  ) )
+	terminal_price_array_larger_S = np.concatenate(( terminal_price_array_larger_S, terminal_price_array_larger_S_AT  ) ) 	
+	terminal_price_array_smaller_sigma = np.concatenate(( terminal_price_array_smaller_sigma, terminal_price_array_smaller_sigma_AT  ) )
+	terminal_price_array_larger_sigma = np.concatenate(( terminal_price_array_larger_sigma, terminal_price_array_larger_sigma_AT  ) )
+	terminal_price_array_smaller_t = np.concatenate(( terminal_price_array_smaller_t, terminal_price_array_smaller_t_AT  ) )
+	terminal_price_array_larger_t = np.concatenate(( terminal_price_array_larger_t, terminal_price_array_larger_t_AT  ) )
+	terminal_price_array_smaller_r = np.concatenate(( terminal_price_array_smaller_r, terminal_price_array_smaller_r_AT  ) )
+	terminal_price_array_larger_r = np.concatenate(( terminal_price_array_larger_r, terminal_price_array_larger_r_AT ) )
+
+	MinPrice_array = np.concatenate( (MinPrice_array, MinPrice_array_AT ) )
+	MaxPrice_array = np.concatenate( (MaxPrice_array, MaxPrice_array_AT ) )
+	MinPrice_array_smaller_S = np.concatenate( (MinPrice_array_smaller_S, MinPrice_array_smaller_S_AT ) ) 
+	MinPrice_array_larger_S = np.concatenate( (MinPrice_array_larger_S, MinPrice_array_larger_S_AT ) )
+	MaxPrice_array_smaller_S = np.concatenate( (MaxPrice_array_smaller_S, MaxPrice_array_smaller_S_AT ) ) 
+	MaxPrice_array_larger_S = np.concatenate( (MaxPrice_array_larger_S, MaxPrice_array_larger_S_AT ) )
+	MinPrice_array_smaller_sigma = np.concatenate( (MinPrice_array_smaller_sigma, MinPrice_array_smaller_sigma_AT ) ) 
+	MinPrice_array_larger_sigma = np.concatenate( (MinPrice_array_larger_sigma, MinPrice_array_larger_sigma_AT ) )  
+	MaxPrice_array_smaller_sigma = np.concatenate( (MaxPrice_array_smaller_sigma, MaxPrice_array_smaller_sigma_AT ) )	
+	MaxPrice_array_larger_sigma = np.concatenate( (MaxPrice_array_larger_sigma, MaxPrice_array_larger_sigma_AT ) )   	
+	MinPrice_array_smaller_t = np.concatenate( (MinPrice_array_smaller_t, MinPrice_array_smaller_t_AT ) ) 
+	MinPrice_array_larger_t = np.concatenate( (MinPrice_array_larger_t, MinPrice_array_larger_t_AT ) ) 
+	MaxPrice_array_smaller_t = np.concatenate( (MaxPrice_array_smaller_t, MaxPrice_array_smaller_t_AT ) )
+	MaxPrice_array_larger_t = np.concatenate( (MaxPrice_array_larger_t, MaxPrice_array_larger_t_AT ) ) 	
+	MinPrice_array_smaller_r = np.concatenate( (MinPrice_array_smaller_r, MinPrice_array_smaller_r_AT ) ) 
+	MinPrice_array_larger_r = np.concatenate( (MinPrice_array_larger_r, MinPrice_array_larger_r_AT ) ) 
+	MaxPrice_array_smaller_r = np.concatenate( (MaxPrice_array_smaller_r, MaxPrice_array_smaller_r_AT ) ) 	
+	MaxPrice_array_larger_r = np.concatenate( (MaxPrice_array_larger_r, MaxPrice_array_larger_r_AT ) )
+		
+
+	############################################################### 
+
+	# Check is starting price is above or below the knock-out barrier. This tells us whether we are to use the MinPrices or MaxPrices over the stock prices to determine whether the option gets knocked-out			
 	if S > KnockInBarrier:
-		full_terminal_price_df['KnockInFilter'] = full_terminal_price_df['MinPrice'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_smaller_S'] = full_terminal_price_df['MinPrice_smaller_S'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_larger_S'] = full_terminal_price_df['MinPrice_larger_S'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_smaller_sigma'] = full_terminal_price_df['MinPrice_smaller_sigma'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_larger_sigma'] = full_terminal_price_df['MinPrice_larger_sigma'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_smaller_t'] = full_terminal_price_df['MinPrice_smaller_t'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_larger_t'] = full_terminal_price_df['MinPrice_larger_t'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_smaller_r'] = full_terminal_price_df['MinPrice_smaller_r'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_larger_r'] = full_terminal_price_df['MinPrice_larger_r'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
-		
-		full_terminal_price_df['KnockInFilter_AT'] = full_terminal_price_df['MinPrice_AT'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_smaller_S_AT'] = full_terminal_price_df['MinPrice_smaller_S_AT'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_larger_S_AT'] = full_terminal_price_df['MinPrice_larger_S_AT'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_smaller_sigma_AT'] = full_terminal_price_df['MinPrice_smaller_sigma_AT'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_larger_sigma_AT'] = full_terminal_price_df['MinPrice_larger_sigma_AT'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_smaller_t_AT'] = full_terminal_price_df['MinPrice_smaller_t_AT'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_larger_t_AT'] = full_terminal_price_df['MinPrice_larger_t_AT'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_smaller_r_AT'] = full_terminal_price_df['MinPrice_smaller_r_AT'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_larger_r_AT'] = full_terminal_price_df['MinPrice_larger_r_AT'].apply(KnockInBarrierFilterMinPrice, KnockInBarrier=KnockInBarrier)
+		KnockInFilter_array = np.where(MinPrice_array > KnockInBarrier, 0, 1)
+		KnockInFilter_array_smaller_S = np.where(MinPrice_array_smaller_S > KnockInBarrier, 0, 1)
+		KnockInFilter_array_larger_S =  np.where(MinPrice_array_larger_S > KnockInBarrier, 0, 1)
+		KnockInFilter_array_smaller_sigma = np.where(MinPrice_array_smaller_sigma > KnockInBarrier, 0, 1)
+		KnockInFilter_array_larger_sigma = np.where(MinPrice_array_larger_sigma > KnockInBarrier, 0, 1)
+		KnockInFilter_array_smaller_t = np.where(MinPrice_array_smaller_t > KnockInBarrier, 0, 1)
+		KnockInFilter_array_larger_t = np.where(MinPrice_array_larger_t > KnockInBarrier, 0, 1)
+		KnockInFilter_array_smaller_r = np.where(MinPrice_array_smaller_r > KnockInBarrier, 0, 1) 
+		KnockInFilter_array_larger_r = np.where(MinPrice_array_larger_r > KnockInBarrier, 0, 1)		
 	else:
-		full_terminal_price_df['KnockInFilter'] = full_terminal_price_df['MaxPrice'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_smaller_S'] = full_terminal_price_df['MaxPrice_smaller_S'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_larger_S'] = full_terminal_price_df['MaxPrice_larger_S'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_smaller_sigma'] = full_terminal_price_df['MaxPrice_smaller_sigma'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_larger_sigma'] = full_terminal_price_df['MaxPrice_larger_sigma'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_smaller_t'] = full_terminal_price_df['MaxPrice_smaller_t'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_larger_t'] = full_terminal_price_df['MaxPrice_larger_t'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_smaller_r'] = full_terminal_price_df['MaxPrice_smaller_r'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_larger_r'] = full_terminal_price_df['MaxPrice_larger_r'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
-		
-		full_terminal_price_df['KnockInFilter_AT'] = full_terminal_price_df['MaxPrice_AT'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_smaller_S_AT'] = full_terminal_price_df['MaxPrice_smaller_S_AT'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_larger_S_AT'] = full_terminal_price_df['MaxPrice_larger_S_AT'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_smaller_sigma_AT'] = full_terminal_price_df['MaxPrice_smaller_sigma_AT'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_larger_sigma_AT'] = full_terminal_price_df['MaxPrice_larger_sigma_AT'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_smaller_t_AT'] = full_terminal_price_df['MaxPrice_smaller_t_AT'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_larger_t_AT'] = full_terminal_price_df['MaxPrice_larger_t_AT'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_smaller_r_AT'] = full_terminal_price_df['MaxPrice_smaller_r_AT'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
-		full_terminal_price_df['KnockInFilter_larger_r_AT'] = full_terminal_price_df['MaxPrice_larger_r_AT'].apply(KnockInBarrierFilterMaxPrice, KnockInBarrier=KnockInBarrier)
+		KnockInFilter_array = np.where(MaxPrice_array > KnockInBarrier, 1, 0)
+		KnockInFilter_array_smaller_S = np.where(MaxPrice_array_smaller_S > KnockInBarrier, 1, 0)
+		KnockInFilter_array_larger_S =  np.where(MaxPrice_array_larger_S > KnockInBarrier, 1, 0)
+		KnockInFilter_array_smaller_sigma = np.where(MaxPrice_array_smaller_sigma > KnockInBarrier, 1, 0)
+		KnockInFilter_array_larger_sigma = np.where(MaxPrice_array_larger_sigma > KnockInBarrier, 1, 0)
+		KnockInFilter_array_smaller_t = np.where(MaxPrice_array_smaller_t > KnockInBarrier, 1, 0)
+		KnockInFilter_array_larger_t = np.where(MaxPrice_array_larger_t > KnockInBarrier, 1, 0)
+		KnockInFilter_array_smaller_r = np.where(MaxPrice_array_smaller_r > KnockInBarrier, 1, 0) 
+		KnockInFilter_array_larger_r = np.where(MaxPrice_array_larger_r > KnockInBarrier, 1, 0)	
+
+
+
 	
 	###### CALCULATE THE OPTION PRICE ###################
-	### extract "central" terminal price array #######
-	terminal_price_array = np.concatenate(( full_terminal_price_df['terminal_price'].to_numpy(), full_terminal_price_df['terminal_price_AT'].to_numpy() ))
-	KnockInFilter_array = np.concatenate(( full_terminal_price_df['KnockInFilter'].to_numpy(), full_terminal_price_df['KnockInFilter_AT'].to_numpy() ))
-	
-	### initialize option payoff array to zero values ####	
-	payoff_array = np.zeros(2*n_simulations)
-	
 	#### calculate the option payoff for each of the terminal prices #####
 	payoff_array = np.maximum(K-terminal_price_array, 0)
 	
@@ -1244,14 +1534,10 @@ def MonteCarloKnockInEuropeanPutWithGreeks(S, K, r, sigma, t, T, KnockInBarrier,
 	
 	############## THE GREEKS ######################
 	#### Calculate Delta = dV/dS (partial) #########
-	terminal_price_array_smaller_S = np.concatenate(( full_terminal_price_df['terminal_price_smaller_S'].to_numpy(), full_terminal_price_df['terminal_price_smaller_S_AT'].to_numpy() ))
-	KnockInFilter_array_smaller_S = np.concatenate(( full_terminal_price_df['KnockInFilter_smaller_S'].to_numpy(), full_terminal_price_df['KnockInFilter_smaller_S_AT'].to_numpy() ))	
 	payoff_array_smaller_S = np.maximum(K-terminal_price_array_smaller_S, 0)
 	payoff_array_smaller_S = payoff_array_smaller_S*KnockInFilter_array_smaller_S ### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 	option_value_array_smaller_S = np.exp(-r*(T-t))*payoff_array_smaller_S	
 	
-	terminal_price_array_larger_S = np.concatenate(( full_terminal_price_df['terminal_price_larger_S'].to_numpy(), full_terminal_price_df['terminal_price_larger_S_AT'].to_numpy() ))
-	KnockInFilter_array_larger_S = np.concatenate(( full_terminal_price_df['KnockInFilter_larger_S'].to_numpy(), full_terminal_price_df['KnockInFilter_larger_S_AT'].to_numpy() ))
 	payoff_array_larger_S = np.maximum(K-terminal_price_array_larger_S, 0)
 	payoff_array_larger_S = payoff_array_larger_S*KnockInFilter_array_larger_S ### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 	option_value_array_larger_S = np.exp(-r*(T-t))*payoff_array_larger_S
@@ -1267,15 +1553,10 @@ def MonteCarloKnockInEuropeanPutWithGreeks(S, K, r, sigma, t, T, KnockInBarrier,
 	gamma_StandardError = stats.sem(gamma_array)
 
 	#### Calculate Vega = dV/dsigma (partial) ######
-	
-	terminal_price_array_smaller_sigma = np.concatenate(( full_terminal_price_df['terminal_price_smaller_sigma'].to_numpy(), full_terminal_price_df['terminal_price_smaller_sigma_AT'].to_numpy() ))
-	KnockInFilter_array_smaller_sigma = np.concatenate(( full_terminal_price_df['KnockInFilter_smaller_sigma'].to_numpy(), full_terminal_price_df['KnockInFilter_smaller_sigma_AT'].to_numpy() ))
 	payoff_array_smaller_sigma = np.maximum(K-terminal_price_array_smaller_sigma, 0)
 	payoff_array_smaller_sigma = payoff_array_smaller_sigma*KnockInFilter_array_smaller_sigma ### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 	option_value_array_smaller_sigma = np.exp(-r*(T-t))*payoff_array_smaller_sigma
 	
-	terminal_price_array_larger_sigma = np.concatenate(( full_terminal_price_df['terminal_price_larger_sigma'].to_numpy(), full_terminal_price_df['terminal_price_larger_sigma_AT'].to_numpy() ))
-	KnockInFilter_array_larger_sigma = np.concatenate(( full_terminal_price_df['KnockInFilter_larger_sigma'].to_numpy(), full_terminal_price_df['KnockInFilter_larger_sigma_AT'].to_numpy() ))
 	payoff_array_larger_sigma = np.maximum(K-terminal_price_array_larger_sigma, 0)
 	payoff_array_larger_sigma = payoff_array_larger_sigma*KnockInFilter_array_larger_sigma ### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 	option_value_array_larger_sigma = np.exp(-r*(T-t))*payoff_array_larger_sigma
@@ -1285,15 +1566,9 @@ def MonteCarloKnockInEuropeanPutWithGreeks(S, K, r, sigma, t, T, KnockInBarrier,
 	vega_StandardError = stats.sem(vega_array)
 	
 	#### Calculate Theta = -dV/dt (partial)  #######
-	
-	terminal_price_array_smaller_t = np.concatenate(( full_terminal_price_df['terminal_price_smaller_t'].to_numpy(), full_terminal_price_df['terminal_price_smaller_t_AT'].to_numpy() ))
-	KnockInFilter_array_smaller_t = np.concatenate(( full_terminal_price_df['KnockInFilter_smaller_t'].to_numpy(), full_terminal_price_df['KnockInFilter_smaller_t_AT'].to_numpy() ))
 	payoff_array_smaller_t = np.maximum(K-terminal_price_array_smaller_t, 0)
 	payoff_array_smaller_t = payoff_array_smaller_t*KnockInFilter_array_smaller_t ### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 
-	
-	terminal_price_array_larger_t = np.concatenate(( full_terminal_price_df['terminal_price_larger_t'].to_numpy(), full_terminal_price_df['terminal_price_larger_t_AT'].to_numpy() ))
-	KnockInFilter_array_larger_t = np.concatenate(( full_terminal_price_df['KnockInFilter_larger_t'].to_numpy(), full_terminal_price_df['KnockInFilter_larger_t_AT'].to_numpy() ))
 	payoff_array_larger_t = np.maximum(K-terminal_price_array_larger_t, 0)
 	payoff_array_larger_t = payoff_array_larger_t*KnockInFilter_array_larger_t ### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 	
@@ -1308,14 +1583,9 @@ def MonteCarloKnockInEuropeanPutWithGreeks(S, K, r, sigma, t, T, KnockInBarrier,
 	theta_StandardError = stats.sem(theta_array)
 	
 	#### Calculate Rho = dV/dr (partial)   #########
-	
-	terminal_price_array_smaller_r = np.concatenate(( full_terminal_price_df['terminal_price_smaller_r'].to_numpy(), full_terminal_price_df['terminal_price_smaller_r_AT'].to_numpy() ))
-	KnockInFilter_array_smaller_r = np.concatenate(( full_terminal_price_df['KnockInFilter_smaller_r'].to_numpy(), full_terminal_price_df['KnockInFilter_smaller_r_AT'].to_numpy()	))
 	payoff_array_smaller_r = np.maximum(K-terminal_price_array_smaller_r, 0)	
 	payoff_array_smaller_r = payoff_array_smaller_r*KnockInFilter_array_smaller_r 	 ### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 	
-	terminal_price_array_larger_r = np.concatenate(( full_terminal_price_df['terminal_price_larger_r'].to_numpy(), full_terminal_price_df['terminal_price_larger_r_AT'].to_numpy() ))
-	KnockInFilter_array_larger_r = np.concatenate(( full_terminal_price_df['KnockInFilter_larger_r'].to_numpy(), full_terminal_price_df['KnockInFilter_larger_r_AT'].to_numpy() ))
 	payoff_array_larger_r = np.maximum(K-terminal_price_array_larger_r, 0)
 	payoff_array_larger_r = payoff_array_larger_r*KnockInFilter_array_larger_r	### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 	
@@ -1380,70 +1650,257 @@ def MonteCarloKnockOutEuropeanPutWithGreeks(S, K, r, sigma, t, T, KnockOutBarrie
 	KnockOutBarrier = CorrectionFactor*KnockOutBarrier
 	###
 	
-	#### calculate the terminal prices and store them as a list ####
-	#### use multiple processors to speed up the simulations #######
-	seed_number_array = np.arange(n_simulations) + BaseSeed
-
-	args = [(S, r, sigma, t, T, n_steps, seed) for seed in seed_number_array]
 	
-	with mp.Pool() as pool:
-		full_terminal_price_array = pool.starmap(generate_terminal_price_ForGreeks_withMinMaxPrice_Antithetic, args)
-
-	#### 
-	full_terminal_price_array = np.array(full_terminal_price_array)
+	### Calculate the evolution of the stock price - vectorized approach ############
+	#################################################################################
+	rng = np.random.default_rng(BaseSeed)
+	brownian_array = rng.normal(0, 1, size=(n_simulations,n_steps+1))			### Generate a Brownian motion array - 1 additional step for when we calculate theta
+	log_step_array = (r - 0.5*sigma**2)*time_step + np.sqrt(time_step)*sigma*brownian_array ### Array of movements in the log of S for each time step
+	log_path_array = np.log(S) + np.cumsum( log_step_array, axis = 1 ) 			### Prices at each time step
+	log_path_array = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array ), axis=1 ) ### add the initial price as the first entry
 	
-	full_terminal_price_df = pd.DataFrame(full_terminal_price_array, columns=['terminal_price', 'terminal_price_smaller_S', 'terminal_price_larger_S', 'terminal_price_smaller_sigma', 'terminal_price_larger_sigma', 'terminal_price_smaller_t', 'terminal_price_larger_t', 'terminal_price_smaller_r', 'terminal_price_larger_r', 'MinPrice', 'MaxPrice', 'MinPrice_smaller_S', 'MaxPrice_smaller_S', 'MinPrice_larger_S', 'MaxPrice_larger_S', 'MinPrice_smaller_sigma', 'MaxPrice_smaller_sigma', 'MinPrice_larger_sigma', 'MaxPrice_larger_sigma', 'MinPrice_smaller_t', 'MaxPrice_smaller_t', 'MinPrice_larger_t', 'MaxPrice_larger_t', 'MinPrice_smaller_r', 'MaxPrice_smaller_r',  'MinPrice_larger_r', 'MaxPrice_larger_r', 'terminal_price_AT', 'terminal_price_smaller_S_AT', 'terminal_price_larger_S_AT', 'terminal_price_smaller_sigma_AT', 'terminal_price_larger_sigma_AT', 'terminal_price_smaller_t_AT', 'terminal_price_larger_t_AT', 'terminal_price_smaller_r_AT', 'terminal_price_larger_r_AT', 'MinPrice_AT', 'MaxPrice_AT', 'MinPrice_smaller_S_AT', 'MaxPrice_smaller_S_AT', 'MinPrice_larger_S_AT', 'MaxPrice_larger_S_AT', 'MinPrice_smaller_sigma_AT', 'MaxPrice_smaller_sigma_AT', 'MinPrice_larger_sigma_AT', 'MaxPrice_larger_sigma_AT', 'MinPrice_smaller_t_AT', 'MaxPrice_smaller_t_AT', 'MinPrice_larger_t_AT', 'MaxPrice_larger_t_AT', 'MinPrice_smaller_r_AT', 'MaxPrice_smaller_r_AT',  'MinPrice_larger_r_AT', 'MaxPrice_larger_r_AT'])
+	#################################################################################
+	#### calculate the terminal prices and store them as a numpy array ####
+	terminal_price_array = np.exp(log_path_array[:, -2])
+	
+	##### perturb in S for Delta and Gamma ####
+	terminal_price_array_smaller_S = terminal_price_array*(S-0.01)/S
+	terminal_price_array_larger_S = terminal_price_array*(S+0.01)/S 	
+	
+	##### perturb in sigma for vega ###########
+	smaller_sigma = (sigma-0.01)
+	larger_sigma = (sigma+0.01)
+	log_step_array_smaller_sigma = (r - 0.5*smaller_sigma**2)*time_step + np.sqrt(time_step)*smaller_sigma*brownian_array
+	log_step_array_larger_sigma = (r - 0.5*larger_sigma**2)*time_step + np.sqrt(time_step)*larger_sigma*brownian_array	
+	log_path_array_smaller_sigma = np.log(S) + np.cumsum( log_step_array_smaller_sigma, axis = 1 ) 
+	log_path_array_larger_sigma = np.log(S) + np.cumsum( log_step_array_larger_sigma, axis = 1 )
+	log_path_array_smaller_sigma = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_smaller_sigma ), axis=1 ) ### add the initial price as the first entry
+	log_path_array_larger_sigma = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_larger_sigma ), axis=1 ) ### add the initial price as the first entry 	 		 	 	
+	terminal_price_array_smaller_sigma = np.exp(log_path_array_smaller_sigma[:, -2])
+	terminal_price_array_larger_sigma = np.exp(log_path_array_larger_sigma[:, -2])
+	
+	##### perturb in t for theta ##############
+	terminal_price_array_smaller_t = np.exp(log_path_array[:, -1])
+	terminal_price_array_larger_t = np.exp(log_path_array[:, -3])
+	
+	#### perturb in r for rho #################
+	log_step_array_smaller_r = (r - 1e-4 - 0.5*sigma**2)*time_step + np.sqrt(time_step)*sigma*brownian_array
+	log_step_array_larger_r = (r + 1e-4 - 0.5*sigma**2)*time_step + np.sqrt(time_step)*sigma*brownian_array	
+	log_path_array_smaller_r = np.log(S) + np.cumsum( log_step_array_smaller_r, axis = 1 ) 
+	log_path_array_larger_r = np.log(S) + np.cumsum( log_step_array_larger_r, axis = 1 )
+	log_path_array_smaller_r = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_smaller_r ), axis=1 ) ### add the initial price as the first entry
+	log_path_array_larger_r = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_larger_r ), axis=1 ) ### add the initial price as the first entry 		
+	terminal_price_array_smaller_r = np.exp(log_path_array_smaller_r[:, -2])
+	terminal_price_array_larger_r = np.exp(log_path_array_larger_r[:, -2])	
 
-	# Check is starting price is above or below the knock-out barrier. This tells us whether we are to use the MinPrices or MaxPrices over the stock prices to determine whether the option gets knocked-out	
+	############ Max and minimum prices ###########################
+	MinPrice_array = np.exp( np.min(log_path_array[:, :-1], axis=1, keepdims=True) ) ### ignore the last column as this is the additional time step for theta calculation
+	MaxPrice_array = np.exp( np.max(log_path_array[:, :-1], axis=1, keepdims=True) )
+	
+	
+	MinPrice_array_smaller_S = MinPrice_array*(S-0.01)/S
+	MinPrice_array_larger_S = MinPrice_array*(S+0.01)/S
+	MaxPrice_array_smaller_S = MaxPrice_array*(S-0.01)/S
+	MaxPrice_array_larger_S = MaxPrice_array*(S+0.01)/S
+	
+	MinPrice_array_smaller_sigma =  np.exp( np.min(log_path_array_smaller_sigma[:, :-1], axis=1, keepdims=True) )
+	MinPrice_array_larger_sigma =   np.exp( np.min(log_path_array_larger_sigma[:, :-1], axis=1, keepdims=True) )
+	MaxPrice_array_smaller_sigma =	np.exp( np.max(log_path_array_smaller_sigma[:, :-1], axis=1, keepdims=True) )
+	MaxPrice_array_larger_sigma =   np.exp( np.max(log_path_array_larger_sigma[:, :-1], axis=1, keepdims=True) )
+	
+	MinPrice_array_smaller_t = np.exp( np.min(log_path_array, axis=1, keepdims=True) )  ### keep the last column as this is the additional time step for a longer time to maturity
+	MinPrice_array_larger_t = np.exp( np.min(log_path_array[:, :-2], axis=1, keepdims=True) )  ### ignore the last two columns as the time to maturity is shorter
+	MaxPrice_array_smaller_t = np.exp( np.max(log_path_array, axis=1, keepdims=True) )
+	MaxPrice_array_larger_t = np.exp( np.max(log_path_array[:, :-2], axis=1, keepdims=True) )
+	
+	MinPrice_array_smaller_r = np.exp( np.min(log_path_array_smaller_r[:, :-1], axis=1, keepdims=True) )
+	MinPrice_array_larger_r = np.exp( np.min(log_path_array_larger_r[:, :-1], axis=1, keepdims=True) )
+	MaxPrice_array_smaller_r = np.exp( np.max(log_path_array_smaller_r[:, :-1], axis=1, keepdims=True) )	
+	MaxPrice_array_larger_r = np.exp( np.max(log_path_array_larger_r[:, :-1], axis=1, keepdims=True) )
+
+	#################################################
+	######	Antithetic Pairs of the above ###########
+	brownian_array_AT = -brownian_array	
+	log_step_array_AT = (r - 0.5*sigma**2)*time_step + np.sqrt(time_step)*sigma*brownian_array_AT ### Array of movements in the log of S for each time step
+	log_path_array_AT = np.log(S) + np.cumsum( log_step_array_AT, axis = 1 ) 			### Prices at each time step
+	log_path_array_AT = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_AT ), axis=1 ) ### add the initial price as the first entry
+	
+	#################################################################################
+	#### calculate the terminal prices and store them as a numpy array ####
+	terminal_price_array_AT = np.exp(log_path_array_AT[:, -2])
+	
+	##### perturb in S for Delta and Gamma ####
+	terminal_price_array_smaller_S_AT = terminal_price_array_AT*(S-0.01)/S
+	terminal_price_array_larger_S_AT = terminal_price_array_AT*(S+0.01)/S 	
+	
+	##### perturb in sigma for vega ###########
+	smaller_sigma = (sigma-0.01)
+	larger_sigma = (sigma+0.01)
+	log_step_array_smaller_sigma_AT = (r - 0.5*smaller_sigma**2)*time_step + np.sqrt(time_step)*smaller_sigma*brownian_array_AT
+	log_step_array_larger_sigma_AT = (r - 0.5*larger_sigma**2)*time_step + np.sqrt(time_step)*larger_sigma*brownian_array_AT	
+	log_path_array_smaller_sigma_AT = np.log(S) + np.cumsum( log_step_array_smaller_sigma_AT, axis = 1 ) 
+	log_path_array_larger_sigma_AT = np.log(S) + np.cumsum( log_step_array_larger_sigma_AT, axis = 1 )
+	log_path_array_smaller_sigma_AT = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_smaller_sigma_AT ), axis=1 ) #add the initial price as first entry
+	log_path_array_larger_sigma_AT = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_larger_sigma_AT ), axis=1 ) #add the initial price as the first entry 	 		 	 	
+	terminal_price_array_smaller_sigma_AT = np.exp(log_path_array_smaller_sigma_AT[:, -2])
+	terminal_price_array_larger_sigma_AT = np.exp(log_path_array_larger_sigma_AT[:, -2])
+	
+	##### perturb in t for theta ##############
+	terminal_price_array_smaller_t_AT = np.exp(log_path_array_AT[:, -1])
+	terminal_price_array_larger_t_AT = np.exp(log_path_array_AT[:, -3])
+	
+	#### perturb in r for rho #################
+	log_step_array_smaller_r_AT = (r - 1e-4 - 0.5*sigma**2)*time_step + np.sqrt(time_step)*sigma*brownian_array_AT
+	log_step_array_larger_r_AT = (r + 1e-4 - 0.5*sigma**2)*time_step + np.sqrt(time_step)*sigma*brownian_array_AT	
+	log_path_array_smaller_r_AT = np.log(S) + np.cumsum( log_step_array_smaller_r_AT, axis = 1 ) 
+	log_path_array_larger_r_AT = np.log(S) + np.cumsum( log_step_array_larger_r_AT, axis = 1 )
+	log_path_array_smaller_r_AT = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_smaller_r_AT ), axis=1 ) ### add the initial price as the first entry
+	log_path_array_larger_r_AT = np.concatenate( ( np.full( shape = (n_simulations, 1) , fill_value = np.log(S) ), log_path_array_larger_r_AT ), axis=1 ) ### add the initial price as the first entry 		
+	terminal_price_array_smaller_r_AT = np.exp(log_path_array_smaller_r_AT[:, -2])
+	terminal_price_array_larger_r_AT = np.exp(log_path_array_larger_r_AT[:, -2])	
+
+	############ Max and minimum prices ###########################
+	MinPrice_array_AT = np.exp( np.min(log_path_array_AT[:, :-1], axis=1, keepdims=True) ) ### ignore the last column as this is the additional time step for theta calculation
+	MaxPrice_array_AT = np.exp( np.max(log_path_array_AT[:, :-1], axis=1, keepdims=True) )
+	
+	
+	MinPrice_array_smaller_S_AT = MinPrice_array_AT*(S-0.01)/S
+	MinPrice_array_larger_S_AT = MinPrice_array_AT*(S+0.01)/S
+	MaxPrice_array_smaller_S_AT = MaxPrice_array_AT*(S-0.01)/S
+	MaxPrice_array_larger_S_AT = MaxPrice_array_AT*(S+0.01)/S
+	
+	MinPrice_array_smaller_sigma_AT =  np.exp( np.min(log_path_array_smaller_sigma_AT[:, :-1], axis=1, keepdims=True) )
+	MinPrice_array_larger_sigma_AT =   np.exp( np.min(log_path_array_larger_sigma_AT[:, :-1], axis=1, keepdims=True) )
+	MaxPrice_array_smaller_sigma_AT = np.exp( np.max(log_path_array_smaller_sigma_AT[:, :-1], axis=1, keepdims=True) )
+	MaxPrice_array_larger_sigma_AT = np.exp( np.max(log_path_array_larger_sigma_AT[:, :-1], axis=1, keepdims=True) )
+	
+	MinPrice_array_smaller_t_AT = np.exp( np.min(log_path_array_AT, axis=1, keepdims=True) )  ### keep the last column as this is the additional time step for a longer time to maturity
+	MinPrice_array_larger_t_AT = np.exp( np.min(log_path_array_AT[:, :-2], axis=1, keepdims=True) )  ### ignore the last two columns as the time to maturity is shorter
+	MaxPrice_array_smaller_t_AT = np.exp( np.max(log_path_array_AT, axis=1, keepdims=True) )
+	MaxPrice_array_larger_t_AT = np.exp( np.max(log_path_array_AT[:, :-2], axis=1, keepdims=True) )
+	
+	MinPrice_array_smaller_r_AT = np.exp( np.min(log_path_array_smaller_r_AT[:, :-1], axis=1, keepdims=True) )
+	MinPrice_array_larger_r_AT = np.exp( np.min(log_path_array_larger_r_AT[:, :-1], axis=1, keepdims=True) )
+	MaxPrice_array_smaller_r_AT = np.exp( np.max(log_path_array_smaller_r_AT[:, :-1], axis=1, keepdims=True) )	
+	MaxPrice_array_larger_r_AT = np.exp( np.max(log_path_array_larger_r_AT[:, :-1], axis=1, keepdims=True) )
+	
+	
+	
+	##### flatten arrays #####
+	terminal_price_array = terminal_price_array.flatten()
+	terminal_price_array_smaller_S = terminal_price_array_smaller_S.flatten()
+	terminal_price_array_larger_S = terminal_price_array_larger_S.flatten() 	
+	terminal_price_array_smaller_sigma = terminal_price_array_smaller_sigma.flatten()
+	terminal_price_array_larger_sigma = terminal_price_array_larger_sigma.flatten()
+	terminal_price_array_smaller_t = terminal_price_array_smaller_t.flatten()
+	terminal_price_array_larger_t = terminal_price_array_larger_t.flatten()
+	terminal_price_array_smaller_r = terminal_price_array_smaller_r.flatten()
+	terminal_price_array_larger_r = terminal_price_array_larger_r.flatten()
+	
+	MinPrice_array = MinPrice_array.flatten()
+	MaxPrice_array = MaxPrice_array.flatten()
+	MinPrice_array_smaller_S = MinPrice_array_smaller_S.flatten() 
+	MinPrice_array_larger_S = MinPrice_array_larger_S.flatten() 
+	MaxPrice_array_smaller_S = MaxPrice_array_smaller_S.flatten() 
+	MaxPrice_array_larger_S = MaxPrice_array_larger_S.flatten() 
+	MinPrice_array_smaller_sigma = MinPrice_array_smaller_sigma.flatten() 
+	MinPrice_array_larger_sigma = MinPrice_array_larger_sigma.flatten()  
+	MaxPrice_array_smaller_sigma = MaxPrice_array_smaller_sigma.flatten()	
+	MaxPrice_array_larger_sigma = MaxPrice_array_larger_sigma.flatten()   	
+	MinPrice_array_smaller_t = MinPrice_array_smaller_t.flatten() 
+	MinPrice_array_larger_t = MinPrice_array_larger_t.flatten() 
+	MaxPrice_array_smaller_t = MaxPrice_array_smaller_t.flatten()
+	MaxPrice_array_larger_t = MaxPrice_array_larger_t.flatten() 	
+	MinPrice_array_smaller_r = MinPrice_array_smaller_r.flatten() 
+	MinPrice_array_larger_r = MinPrice_array_larger_r.flatten() 
+	MaxPrice_array_smaller_r = MaxPrice_array_smaller_r.flatten() 	
+	MaxPrice_array_larger_r = MaxPrice_array_larger_r.flatten()
+	
+	terminal_price_array_AT = terminal_price_array_AT.flatten()
+	terminal_price_array_smaller_S_AT = terminal_price_array_smaller_S_AT.flatten()
+	terminal_price_array_larger_S_AT = terminal_price_array_larger_S_AT.flatten() 	
+	terminal_price_array_smaller_sigma_AT = terminal_price_array_smaller_sigma_AT.flatten()
+	terminal_price_array_larger_sigma_AT = terminal_price_array_larger_sigma_AT.flatten()
+	terminal_price_array_smaller_t_AT = terminal_price_array_smaller_t_AT.flatten()
+	terminal_price_array_larger_t_AT = terminal_price_array_larger_t_AT.flatten()
+	terminal_price_array_smaller_r_AT = terminal_price_array_smaller_r_AT.flatten()
+	terminal_price_array_larger_r_AT = terminal_price_array_larger_r_AT.flatten()
+	
+	MinPrice_array_AT = MinPrice_array_AT.flatten()
+	MaxPrice_array_AT = MaxPrice_array_AT.flatten()
+	MinPrice_array_smaller_S_AT = MinPrice_array_smaller_S_AT.flatten() 
+	MinPrice_array_larger_S_AT = MinPrice_array_larger_S_AT.flatten() 
+	MaxPrice_array_smaller_S_AT = MaxPrice_array_smaller_S_AT.flatten() 
+	MaxPrice_array_larger_S_AT = MaxPrice_array_larger_S_AT.flatten() 
+	MinPrice_array_smaller_sigma_AT = MinPrice_array_smaller_sigma_AT.flatten() 
+	MinPrice_array_larger_sigma_AT = MinPrice_array_larger_sigma_AT.flatten()  
+	MaxPrice_array_smaller_sigma_AT = MaxPrice_array_smaller_sigma_AT.flatten()	
+	MaxPrice_array_larger_sigma_AT = MaxPrice_array_larger_sigma_AT.flatten()   	
+	MinPrice_array_smaller_t_AT = MinPrice_array_smaller_t_AT.flatten() 
+	MinPrice_array_larger_t_AT = MinPrice_array_larger_t_AT.flatten() 
+	MaxPrice_array_smaller_t_AT = MaxPrice_array_smaller_t_AT.flatten()
+	MaxPrice_array_larger_t_AT = MaxPrice_array_larger_t_AT.flatten() 	
+	MinPrice_array_smaller_r_AT = MinPrice_array_smaller_r_AT.flatten() 
+	MinPrice_array_larger_r_AT = MinPrice_array_larger_r_AT.flatten() 
+	MaxPrice_array_smaller_r_AT = MaxPrice_array_smaller_r_AT.flatten() 	
+	MaxPrice_array_larger_r_AT = MaxPrice_array_larger_r_AT.flatten()		
+	
+	#### concatenate ####
+
+	terminal_price_array = np.concatenate( (terminal_price_array, terminal_price_array_AT) )
+	terminal_price_array_smaller_S = np.concatenate(( terminal_price_array_smaller_S, terminal_price_array_smaller_S_AT  ) )
+	terminal_price_array_larger_S = np.concatenate(( terminal_price_array_larger_S, terminal_price_array_larger_S_AT  ) ) 	
+	terminal_price_array_smaller_sigma = np.concatenate(( terminal_price_array_smaller_sigma, terminal_price_array_smaller_sigma_AT  ) )
+	terminal_price_array_larger_sigma = np.concatenate(( terminal_price_array_larger_sigma, terminal_price_array_larger_sigma_AT  ) )
+	terminal_price_array_smaller_t = np.concatenate(( terminal_price_array_smaller_t, terminal_price_array_smaller_t_AT  ) )
+	terminal_price_array_larger_t = np.concatenate(( terminal_price_array_larger_t, terminal_price_array_larger_t_AT  ) )
+	terminal_price_array_smaller_r = np.concatenate(( terminal_price_array_smaller_r, terminal_price_array_smaller_r_AT  ) )
+	terminal_price_array_larger_r = np.concatenate(( terminal_price_array_larger_r, terminal_price_array_larger_r_AT ) )
+
+	MinPrice_array = np.concatenate( (MinPrice_array, MinPrice_array_AT ) )
+	MaxPrice_array = np.concatenate( (MaxPrice_array, MaxPrice_array_AT ) )
+	MinPrice_array_smaller_S = np.concatenate( (MinPrice_array_smaller_S, MinPrice_array_smaller_S_AT ) ) 
+	MinPrice_array_larger_S = np.concatenate( (MinPrice_array_larger_S, MinPrice_array_larger_S_AT ) )
+	MaxPrice_array_smaller_S = np.concatenate( (MaxPrice_array_smaller_S, MaxPrice_array_smaller_S_AT ) ) 
+	MaxPrice_array_larger_S = np.concatenate( (MaxPrice_array_larger_S, MaxPrice_array_larger_S_AT ) )
+	MinPrice_array_smaller_sigma = np.concatenate( (MinPrice_array_smaller_sigma, MinPrice_array_smaller_sigma_AT ) ) 
+	MinPrice_array_larger_sigma = np.concatenate( (MinPrice_array_larger_sigma, MinPrice_array_larger_sigma_AT ) )  
+	MaxPrice_array_smaller_sigma = np.concatenate( (MaxPrice_array_smaller_sigma, MaxPrice_array_smaller_sigma_AT ) )	
+	MaxPrice_array_larger_sigma = np.concatenate( (MaxPrice_array_larger_sigma, MaxPrice_array_larger_sigma_AT ) )   	
+	MinPrice_array_smaller_t = np.concatenate( (MinPrice_array_smaller_t, MinPrice_array_smaller_t_AT ) ) 
+	MinPrice_array_larger_t = np.concatenate( (MinPrice_array_larger_t, MinPrice_array_larger_t_AT ) ) 
+	MaxPrice_array_smaller_t = np.concatenate( (MaxPrice_array_smaller_t, MaxPrice_array_smaller_t_AT ) )
+	MaxPrice_array_larger_t = np.concatenate( (MaxPrice_array_larger_t, MaxPrice_array_larger_t_AT ) ) 	
+	MinPrice_array_smaller_r = np.concatenate( (MinPrice_array_smaller_r, MinPrice_array_smaller_r_AT ) ) 
+	MinPrice_array_larger_r = np.concatenate( (MinPrice_array_larger_r, MinPrice_array_larger_r_AT ) ) 
+	MaxPrice_array_smaller_r = np.concatenate( (MaxPrice_array_smaller_r, MaxPrice_array_smaller_r_AT ) ) 	
+	MaxPrice_array_larger_r = np.concatenate( (MaxPrice_array_larger_r, MaxPrice_array_larger_r_AT ) )
+	
+	############################################################### 
+	
+	# Check is starting price is above or below the knock-out barrier. This tells us whether we are to use the MinPrices or MaxPrices over the stock prices to determine whether the option gets knocked-out			
 	if S > KnockOutBarrier:
-		full_terminal_price_df['KnockOutFilter'] = full_terminal_price_df['MinPrice'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_smaller_S'] = full_terminal_price_df['MinPrice_smaller_S'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_larger_S'] = full_terminal_price_df['MinPrice_larger_S'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_smaller_sigma'] = full_terminal_price_df['MinPrice_smaller_sigma'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_larger_sigma'] = full_terminal_price_df['MinPrice_larger_sigma'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_smaller_t'] = full_terminal_price_df['MinPrice_smaller_t'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_larger_t'] = full_terminal_price_df['MinPrice_larger_t'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_smaller_r'] = full_terminal_price_df['MinPrice_smaller_r'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_larger_r'] = full_terminal_price_df['MinPrice_larger_r'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
-		
-		full_terminal_price_df['KnockOutFilter_AT'] = full_terminal_price_df['MinPrice_AT'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_smaller_S_AT'] = full_terminal_price_df['MinPrice_smaller_S_AT'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_larger_S_AT'] = full_terminal_price_df['MinPrice_larger_S_AT'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_smaller_sigma_AT'] = full_terminal_price_df['MinPrice_smaller_sigma_AT'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_larger_sigma_AT'] = full_terminal_price_df['MinPrice_larger_sigma_AT'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_smaller_t_AT'] = full_terminal_price_df['MinPrice_smaller_t_AT'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_larger_t_AT'] = full_terminal_price_df['MinPrice_larger_t_AT'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_smaller_r_AT'] = full_terminal_price_df['MinPrice_smaller_r_AT'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_larger_r_AT'] = full_terminal_price_df['MinPrice_larger_r_AT'].apply(KnockOutBarrierFilterMinPrice, KnockOutBarrier=KnockOutBarrier)
+		KnockOutFilter_array = np.where(MinPrice_array > KnockOutBarrier, 1, 0)
+		KnockOutFilter_array_smaller_S = np.where(MinPrice_array_smaller_S > KnockOutBarrier, 1, 0)
+		KnockOutFilter_array_larger_S =  np.where(MinPrice_array_larger_S > KnockOutBarrier, 1, 0)
+		KnockOutFilter_array_smaller_sigma = np.where(MinPrice_array_smaller_sigma > KnockOutBarrier, 1, 0)
+		KnockOutFilter_array_larger_sigma = np.where(MinPrice_array_larger_sigma > KnockOutBarrier, 1, 0)
+		KnockOutFilter_array_smaller_t = np.where(MinPrice_array_smaller_t > KnockOutBarrier, 1, 0)
+		KnockOutFilter_array_larger_t = np.where(MinPrice_array_larger_t > KnockOutBarrier, 1, 0)
+		KnockOutFilter_array_smaller_r = np.where(MinPrice_array_smaller_r > KnockOutBarrier, 1, 0) 
+		KnockOutFilter_array_larger_r = np.where(MinPrice_array_larger_r > KnockOutBarrier, 1, 0)		
 	else:
-		full_terminal_price_df['KnockOutFilter'] = full_terminal_price_df['MaxPrice'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_smaller_S'] = full_terminal_price_df['MaxPrice_smaller_S'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_larger_S'] = full_terminal_price_df['MaxPrice_larger_S'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_smaller_sigma'] = full_terminal_price_df['MaxPrice_smaller_sigma'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_larger_sigma'] = full_terminal_price_df['MaxPrice_larger_sigma'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_smaller_t'] = full_terminal_price_df['MaxPrice_smaller_t'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_larger_t'] = full_terminal_price_df['MaxPrice_larger_t'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_smaller_r'] = full_terminal_price_df['MaxPrice_smaller_r'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_larger_r'] = full_terminal_price_df['MaxPrice_larger_r'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-		
-		full_terminal_price_df['KnockOutFilter_AT'] = full_terminal_price_df['MaxPrice_AT'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_smaller_S_AT'] = full_terminal_price_df['MaxPrice_smaller_S_AT'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_larger_S_AT'] = full_terminal_price_df['MaxPrice_larger_S_AT'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_smaller_sigma_AT'] = full_terminal_price_df['MaxPrice_smaller_sigma_AT'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_larger_sigma_AT'] = full_terminal_price_df['MaxPrice_larger_sigma_AT'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_smaller_t_AT'] = full_terminal_price_df['MaxPrice_smaller_t_AT'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_larger_t_AT'] = full_terminal_price_df['MaxPrice_larger_t_AT'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_smaller_r_AT'] = full_terminal_price_df['MaxPrice_smaller_r_AT'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
-		full_terminal_price_df['KnockOutFilter_larger_r_AT'] = full_terminal_price_df['MaxPrice_larger_r_AT'].apply(KnockOutBarrierFilterMaxPrice, KnockOutBarrier=KnockOutBarrier)
+		KnockOutFilter_array = np.where(MaxPrice_array > KnockOutBarrier, 0, 1)
+		KnockOutFilter_array_smaller_S = np.where(MaxPrice_array_smaller_S > KnockOutBarrier, 0, 1)
+		KnockOutFilter_array_larger_S =  np.where(MaxPrice_array_larger_S > KnockOutBarrier, 0, 1)
+		KnockOutFilter_array_smaller_sigma = np.where(MaxPrice_array_smaller_sigma > KnockOutBarrier, 0, 1)
+		KnockOutFilter_array_larger_sigma = np.where(MaxPrice_array_larger_sigma > KnockOutBarrier, 0, 1)
+		KnockOutFilter_array_smaller_t = np.where(MaxPrice_array_smaller_t > KnockOutBarrier, 0, 1)
+		KnockOutFilter_array_larger_t = np.where(MaxPrice_array_larger_t > KnockOutBarrier, 0, 1)
+		KnockOutFilter_array_smaller_r = np.where(MaxPrice_array_smaller_r > KnockOutBarrier, 0, 1) 
+		KnockOutFilter_array_larger_r = np.where(MaxPrice_array_larger_r > KnockOutBarrier, 0, 1)		
 	
-	###### CALCULATE THE OPTION PRICE ###################
-	### extract "central" terminal price array #######
-	terminal_price_array = np.concatenate(( full_terminal_price_df['terminal_price'].to_numpy(), full_terminal_price_df['terminal_price_AT'].to_numpy() )) 
-	KnockOutFilter_array = np.concatenate(( full_terminal_price_df['KnockOutFilter'].to_numpy(), full_terminal_price_df['KnockOutFilter_AT'].to_numpy() ))
-	
-	### initialize option payoff array to zero values ####	
-	payoff_array = np.zeros(2*n_simulations)
-	
+	###### CALCULATE THE OPTION PRICE #######################
 	#### calculate the option payoff for each of the terminal prices #####
 	payoff_array = np.maximum(K-terminal_price_array, 0)
 	
@@ -1460,15 +1917,11 @@ def MonteCarloKnockOutEuropeanPutWithGreeks(S, K, r, sigma, t, T, KnockOutBarrie
 	option_value_StandardError = stats.sem(option_value_array)
 	
 	############## THE GREEKS ######################
-	#### Calculate Delta = dV/dS (partial) #########
-	terminal_price_array_smaller_S = np.concatenate(( full_terminal_price_df['terminal_price_smaller_S'].to_numpy(), full_terminal_price_df['terminal_price_smaller_S_AT'].to_numpy() ))
-	KnockOutFilter_array_smaller_S = np.concatenate(( full_terminal_price_df['KnockOutFilter_smaller_S'].to_numpy(), full_terminal_price_df['KnockOutFilter_smaller_S_AT'].to_numpy() ))	
+	#### Calculate Delta = dV/dS (partial) #########	
 	payoff_array_smaller_S = np.maximum(K-terminal_price_array_smaller_S, 0)
 	payoff_array_smaller_S = payoff_array_smaller_S*KnockOutFilter_array_smaller_S ### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 	option_value_array_smaller_S = np.exp(-r*(T-t))*payoff_array_smaller_S	
 	
-	terminal_price_array_larger_S = np.concatenate(( full_terminal_price_df['terminal_price_larger_S'].to_numpy(), full_terminal_price_df['terminal_price_larger_S_AT'].to_numpy() ))
-	KnockOutFilter_array_larger_S = np.concatenate(( full_terminal_price_df['KnockOutFilter_larger_S'].to_numpy(), full_terminal_price_df['KnockOutFilter_larger_S_AT'].to_numpy() ))
 	payoff_array_larger_S = np.maximum(K-terminal_price_array_larger_S, 0)
 	payoff_array_larger_S = payoff_array_larger_S*KnockOutFilter_array_larger_S ### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 	option_value_array_larger_S = np.exp(-r*(T-t))*payoff_array_larger_S
@@ -1484,15 +1937,10 @@ def MonteCarloKnockOutEuropeanPutWithGreeks(S, K, r, sigma, t, T, KnockOutBarrie
 	gamma_StandardError = stats.sem(gamma_array)
 
 	#### Calculate Vega = dV/dsigma (partial) ######
-	
-	terminal_price_array_smaller_sigma = np.concatenate(( full_terminal_price_df['terminal_price_smaller_sigma'].to_numpy(), full_terminal_price_df['terminal_price_smaller_sigma_AT'].to_numpy() ))
-	KnockOutFilter_array_smaller_sigma = np.concatenate(( full_terminal_price_df['KnockOutFilter_smaller_sigma'].to_numpy(), full_terminal_price_df['KnockOutFilter_smaller_sigma_AT'].to_numpy() ))
 	payoff_array_smaller_sigma = np.maximum(K-terminal_price_array_smaller_sigma, 0)
 	payoff_array_smaller_sigma = payoff_array_smaller_sigma*KnockOutFilter_array_smaller_sigma	### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 	option_value_array_smaller_sigma = np.exp(-r*(T-t))*payoff_array_smaller_sigma
 	
-	terminal_price_array_larger_sigma = np.concatenate(( full_terminal_price_df['terminal_price_larger_sigma'].to_numpy(), full_terminal_price_df['terminal_price_larger_sigma_AT'].to_numpy() ))
-	KnockOutFilter_array_larger_sigma = np.concatenate(( full_terminal_price_df['KnockOutFilter_larger_sigma'].to_numpy(), full_terminal_price_df['KnockOutFilter_larger_sigma_AT'].to_numpy() ))
 	payoff_array_larger_sigma = np.maximum(K-terminal_price_array_larger_sigma, 0)
 	payoff_array_larger_sigma = payoff_array_larger_sigma*KnockOutFilter_array_larger_sigma	### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 	option_value_array_larger_sigma = np.exp(-r*(T-t))*payoff_array_larger_sigma
@@ -1502,15 +1950,9 @@ def MonteCarloKnockOutEuropeanPutWithGreeks(S, K, r, sigma, t, T, KnockOutBarrie
 	vega_StandardError = stats.sem(vega_array)
 	
 	#### Calculate Theta = -dV/dt (partial)  #######
-	
-	terminal_price_array_smaller_t = np.concatenate(( full_terminal_price_df['terminal_price_smaller_t'].to_numpy(), full_terminal_price_df['terminal_price_smaller_t_AT'].to_numpy() ))
-	KnockOutFilter_array_smaller_t = np.concatenate(( full_terminal_price_df['KnockOutFilter_smaller_t'].to_numpy(), full_terminal_price_df['KnockOutFilter_smaller_t_AT'].to_numpy() ))
 	payoff_array_smaller_t = np.maximum(K-terminal_price_array_smaller_t, 0)
 	payoff_array_smaller_t = payoff_array_smaller_t*KnockOutFilter_array_smaller_t	### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 
-	
-	terminal_price_array_larger_t = np.concatenate(( full_terminal_price_df['terminal_price_larger_t'].to_numpy(), full_terminal_price_df['terminal_price_larger_t_AT'].to_numpy() ))
-	KnockOutFilter_array_larger_t = np.concatenate(( full_terminal_price_df['KnockOutFilter_larger_t'].to_numpy(), full_terminal_price_df['KnockOutFilter_larger_t_AT'].to_numpy() ))
 	payoff_array_larger_t = np.maximum(K-terminal_price_array_larger_t, 0)
 	payoff_array_larger_t = payoff_array_larger_t*KnockOutFilter_array_larger_t	### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 	
@@ -1524,15 +1966,10 @@ def MonteCarloKnockOutEuropeanPutWithGreeks(S, K, r, sigma, t, T, KnockOutBarrie
 	theta_value = np.mean(theta_array)
 	theta_StandardError = stats.sem(theta_array)
 	
-	#### Calculate Rho = dV/dr (partial)   #########
-	
-	terminal_price_array_smaller_r = np.concatenate(( full_terminal_price_df['terminal_price_smaller_r'].to_numpy(), full_terminal_price_df['terminal_price_smaller_r_AT'].to_numpy() ))
-	KnockOutFilter_array_smaller_r = np.concatenate(( full_terminal_price_df['KnockOutFilter_smaller_r'].to_numpy(), full_terminal_price_df['KnockOutFilter_smaller_r_AT'].to_numpy() ))	
+	#### Calculate Rho = dV/dr (partial)   #########	
 	payoff_array_smaller_r = np.maximum(K-terminal_price_array_smaller_r, 0)	
 	payoff_array_smaller_r = payoff_array_smaller_r*KnockOutFilter_array_smaller_r 	### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
-	
-	terminal_price_array_larger_r = np.concatenate(( full_terminal_price_df['terminal_price_larger_r'].to_numpy(), full_terminal_price_df['terminal_price_larger_r_AT'].to_numpy() ))
-	KnockOutFilter_array_larger_r = np.concatenate(( full_terminal_price_df['KnockOutFilter_larger_r'].to_numpy(), full_terminal_price_df['KnockOutFilter_larger_r_AT'].to_numpy() ))
+
 	payoff_array_larger_r = np.maximum(K-terminal_price_array_larger_r, 0)
 	payoff_array_larger_r = payoff_array_larger_r*KnockOutFilter_array_larger_r	 ### APPLIES THE BARRIER FILTER TO THE PAYOFF ARRAY
 	

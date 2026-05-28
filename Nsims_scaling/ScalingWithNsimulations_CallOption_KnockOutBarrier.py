@@ -1,10 +1,8 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import multiprocessing as mp
 from scipy import stats
 from scipy.stats import norm
-from multiprocessing import Pool
 
 import sys
 import os
@@ -27,15 +25,9 @@ from options_antithetic import EuropeanBarrierAntithetic as at
 ##################################################################################
 
 def main():
-	print("Number of cpus : ", mp.cpu_count())
-	pool = Pool(processes=(mp.cpu_count() - 1))
-	StandardBaseSeed = 0
-	
-	
-	print('\n')	
 	print ("Starting simulations...\n")
 
-	NSim_array = np.array([10, 20, 40, 70, 100, 200, 400, 700, 1e3, 2e3, 4e3, 7e3, 1e4, 2e4, 4e4, 7e4, 1e5, 2e5, 4e5, 7e5, 1e6])
+	NSim_array = np.array([10, 20, 40, 70, 100, 200, 400, 700, 1e3, 2e3, 4e3, 7e3, 1e4, 2e4, 4e4, 7e4, 1e5, 2e5, 4e5, 7e5, 1e6]) ##### array of n_simulations values to scan over
 	n_examples = len(NSim_array)
 	Output_array = np.zeros((n_examples, 12)) # Output array: MonteCarloKnockOutEuropeanCallWithGreeks function has an output of length 12
 	Output_array_2 = np.zeros((n_examples, 12)) # Output array: MonteCarloKnockOutEuropeanCallWithGreeks function has an output of length 12
@@ -161,10 +153,10 @@ def main():
 	plt.title(f'Price of Knock-Out Call Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity}, H={KnockOutBarrier})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel('Price ($)')
-	plt.legend(loc='upper right')
+	plt.legend()
 	plt.grid(True)
-	plt.xlim(1e1, 1e7)
-	plt.savefig("../plots/BarrierKnockOutCallOptionConvergence/MonteCarloPriceConvergence_BarrierCallOption.jpg")
+	plt.xlim(1e1, 1e6)
+	plt.savefig("../plots/BarrierKnockOutCallOptionConvergence/MonteCarloPriceConvergence_KnockOutBarrierCallOption.jpg")
 	plt.clf()
 
 	plt.figure(figsize=(8, 6))
@@ -177,10 +169,10 @@ def main():
 	plt.title(f'Delta of Knock-Out Call Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity}, H={KnockOutBarrier})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel(r'$\Delta$')
-	plt.legend(loc='lower right')
+	plt.legend()
 	plt.grid(True)
-	plt.xlim(1e1, 1e7)
-	plt.savefig("../plots/BarrierKnockOutCallOptionConvergence/MonteCarloDeltaConvergence_BarrierCallOption.jpg")
+	plt.xlim(1e1, 1e6)
+	plt.savefig("../plots/BarrierKnockOutCallOptionConvergence/MonteCarloDeltaConvergence_KnockOutBarrierCallOption.jpg")
 	plt.clf()
 
 	plt.figure(figsize=(8, 6))
@@ -193,10 +185,10 @@ def main():
 	plt.title(f'Gamma of Knock-Out Call Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity}, H={KnockOutBarrier})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel(r'$\Gamma$ $(\$)^{-1}$')
-	plt.legend(loc='lower right')
+	plt.legend()
 	plt.grid(True)
-	plt.xlim(1e1, 1e7)
-	plt.savefig("../plots/BarrierKnockOutCallOptionConvergence/MonteCarloGammaConvergence_BarrierCallOption.jpg")
+	plt.xlim(1e1, 1e6)
+	plt.savefig("../plots/BarrierKnockOutCallOptionConvergence/MonteCarloGammaConvergence_KnockOutBarrierCallOption.jpg")
 	plt.clf()
 	
 	plt.figure(figsize=(8, 6))
@@ -209,11 +201,11 @@ def main():
 	plt.title(f'Gamma of Knock-Out Call Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity}, H={KnockOutBarrier})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel(r'$\Gamma$ $(\$)^{-1}$')
-	plt.legend(loc='upper right')
+	plt.legend()
 	plt.grid(True)
-	plt.xlim(1e1, 1e7)
-	plt.ylim(-1, 1)	
-	plt.savefig("../plots/BarrierKnockOutCallOptionConvergence/MonteCarloGammaConvergence_BarrierCallOption_ZoomedIn.jpg")
+	plt.xlim(1e1, 1e6)
+	plt.ylim(-50, 50)	
+	plt.savefig("../plots/BarrierKnockOutCallOptionConvergence/MonteCarloGammaConvergence_KnockOutBarrierCallOption_ZoomedIn.jpg")
 	plt.clf()			
 	
 	plt.figure(figsize=(8, 6))
@@ -226,10 +218,10 @@ def main():
 	plt.title(f'Vega of Knock-Out Call Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity}, H={KnockOutBarrier})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel(r'Vega $( \$ \cdot \sqrt{\mathrm{year}} )$')
-	plt.legend(loc='upper right')
+	plt.legend()
 	plt.grid(True)
-	plt.xlim(1e1, 1e7)
-	plt.savefig("../plots/BarrierKnockOutCallOptionConvergence/MonteCarloVegaConvergence_BarrierCallOption.jpg")
+	plt.xlim(1e1, 1e6)
+	plt.savefig("../plots/BarrierKnockOutCallOptionConvergence/MonteCarloVegaConvergence_KnockOutBarrierCallOption.jpg")
 	plt.clf()
 	
 	plt.figure(figsize=(8, 6))
@@ -242,10 +234,10 @@ def main():
 	plt.title(f'Theta of Knock-Out Call Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity}, H={KnockOutBarrier})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel(r'$\Theta$ $( \$ / \mathrm{year} )$')
-	plt.legend(loc='lower right')
+	plt.legend()
 	plt.grid(True)
-	plt.xlim(1e1, 1e7)
-	plt.savefig("../plots/BarrierKnockOutCallOptionConvergence/MonteCarloThetaConvergence_BarrierCallOption.jpg")
+	plt.xlim(1e1, 1e6)
+	plt.savefig("../plots/BarrierKnockOutCallOptionConvergence/MonteCarloThetaConvergence_KnockOutBarrierCallOption.jpg")
 	plt.clf()
 
 	plt.figure(figsize=(8, 6))
@@ -258,10 +250,10 @@ def main():
 	plt.title(f'Rho of Knock-Out Call Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity}, H={KnockOutBarrier})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel(r'$\rho$ $( \$ \cdot \mathrm{year} )$')
-	plt.legend(loc='lower right')
+	plt.legend()
 	plt.grid(True)
-	plt.xlim(1e1, 1e7)
-	plt.savefig("../plots/BarrierKnockOutCallOptionConvergence/MonteCarloRhoConvergence_BarrierCallOption.jpg")
+	plt.xlim(1e1, 1e6)
+	plt.savefig("../plots/BarrierKnockOutCallOptionConvergence/MonteCarloRhoConvergence_KnockOutBarrierCallOption.jpg")
 	plt.clf()
 
 	print('Generated plots saved in plots folder.')
