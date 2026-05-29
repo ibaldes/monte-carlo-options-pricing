@@ -30,34 +30,35 @@ def main():
 
 	NSim_array = np.array([10, 20, 40, 70, 100, 200, 400, 700, 1e3, 2e3, 4e3, 7e3, 1e4, 2e4, 4e4, 7e4, 1e5, 2e5, 4e5, 7e5, 1e6]) ##### array of n_simulations values to scan over
 	n_examples = len(NSim_array)
-	Output_array = np.zeros((n_examples, 12)) # Output array: BlackScholesVanillaEuropeanCallWithGreeks function has an output of length 12
-	Output_array_2 = np.zeros((n_examples, 12)) # Output array: BlackScholesVanillaEuropeanCallWithGreeks function has an output of length 12	
+	Output_array = np.zeros((n_examples, 12)) # Output array: BlackScholesVanillaEuropeanPutWithGreeks function has an output of length 12
+	Output_array_2 = np.zeros((n_examples, 12)) # Output array: BlackScholesVanillaEuropeanPutWithGreeks function has an output of length 12	
 
 	### Choose some example values for our Option
 	Stockprice = 80
 	Strikeprice = 85
 	interest = 0.05
 	volatility = 0.4
-	timenow = 0
-	timeatmaturity = 0.25
+	timenow = 0.5
+	timeatmaturity = 1.25
+	Savgsofar = 75 
 
 	### Generate the Monte-Carlo prices and Greeks. Note we can increase n_steps to get a better theta estimate (current implementation using plus/minus one step to calculate derivative).
 
 	for i in range(0,n_examples):
 		print(f'Starting example with {NSim_array[i]} simulations\n')
-		Output_array[i, :] = ai.MonteCarloAvgPriceCallWithGreeks(Stockprice, Strikeprice, interest, volatility, timenow, timeatmaturity, n_steps=100, n_simulations=NSim_array[i])
+		Output_array[i, :] = ai.MonteCarloAvgPricePutWithGreeks(Stockprice, Strikeprice, interest, volatility, timenow, timeatmaturity, Savgsofar=Savgsofar, n_steps=100, n_simulations=NSim_array[i])
 
 	print('\nPrices and Greeks using Monte-Carlo for the different n_simulations are:\n', Output_array)
 	print('\n')	
 	
 	for i in range(0,n_examples):
 		print(f'Starting example with {NSim_array[i]} simulations and Antithetic Variates\n')
-		Output_array_2[i, :] = aa.MonteCarloAvgPriceCallWithGreeks(Stockprice, Strikeprice, interest, volatility, timenow, timeatmaturity, n_steps=100, n_simulations=NSim_array[i])
+		Output_array_2[i, :] = aa.MonteCarloAvgPricePutWithGreeks(Stockprice, Strikeprice, interest, volatility, timenow, timeatmaturity, Savgsofar=Savgsofar, n_steps=100, n_simulations=NSim_array[i])
 
 	print('\nPrices and Greeks using Monte-Carlo for the different n_simulations and Antithetic Variates are:\n', Output_array_2)
 	print('\n')	
 	
-	Analytic_array = np.array(ai.ApproxAvgPriceCallWithGreeks(Stockprice, Strikeprice, interest, volatility, timenow, timeatmaturity))
+	Analytic_array = np.array(ai.ApproxAvgPricePutWithGreeks(Stockprice, Strikeprice, interest, volatility, timenow, timeatmaturity, Savgsofar=Savgsofar))
 	print('\nPrices and Greeks using the analytic formula are:\n', Analytic_array)
 	print('\n')	
 
@@ -154,13 +155,13 @@ def main():
 	plt.fill_between(NSim_array, MonteCarloPrice_array_lower_2, MonteCarloPrice_array_upper_2, alpha=0.3, label=f'Naive {CIpercentage}% CI  Antithetic')
 	plt.axhline(y=AnalyticPrice, color='r', linestyle='--', label='Analytic Price')
 	plt.xscale('log') 
-	plt.title(f'Price of Asian Avg. Price Call Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
+	plt.title(rf'Price of Asian Avg. Price Put Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity}, $\bar{{S}}$={Savgsofar})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel('Price ($)')
 	plt.legend()
 	plt.grid(True)
 	plt.xlim(1e1, 1e6)
-	plt.savefig("../plots/AsianAvgPriceCall/MonteCarloPriceConvergence_AsianAvgPriceCallOption.jpg")
+	plt.savefig("../plots/AsianAvgPricePut_PartialAvg/MonteCarloPriceConvergence_AsianAvgPricePutOption_PartialAvg.jpg")
 	plt.clf()
 
 	plt.figure(figsize=(8, 6))
@@ -170,13 +171,13 @@ def main():
 	plt.fill_between(NSim_array, MonteCarloDelta_array_lower_2, MonteCarloDelta_array_upper_2, alpha=0.3, label=f'Naive {CIpercentage}% CI Antithetic')		
 	plt.axhline(y=AnalyticDelta, color='r', linestyle='--', label=r'Analytic $\Delta$')
 	plt.xscale('log') 
-	plt.title(f'Delta of Asian Avg. Price Call Option  (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
+	plt.title(rf'Delta of Asian Avg. Price Put Option  (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity}, $\bar{{S}}$={Savgsofar})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel(r'$\Delta$')
 	plt.legend()
 	plt.grid(True)
 	plt.xlim(1e1, 1e6)
-	plt.savefig("../plots/AsianAvgPriceCall/MonteCarloDeltaConvergence_AsianAvgPriceCallOption.jpg")
+	plt.savefig("../plots/AsianAvgPricePut_PartialAvg/MonteCarloDeltaConvergence_AsianAvgPricePutOption_PartialAvg.jpg")
 	plt.clf()
 
 	plt.figure(figsize=(8, 6))
@@ -186,13 +187,13 @@ def main():
 	plt.fill_between(NSim_array, MonteCarloGamma_array_lower_2, MonteCarloGamma_array_upper_2, alpha=0.3, label=f'Naive {CIpercentage}% CI Antithetic')
 	plt.axhline(y=AnalyticGamma, color='r', linestyle='--', label=r'Analytic $\Gamma$')
 	plt.xscale('log') 
-	plt.title(f'Gamma of Asian Avg. Price Call Option  (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
+	plt.title(rf'Gamma of Asian Avg. Price Put Option  (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity}, $\bar{{S}}$={Savgsofar})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel(r'$\Gamma$ $(\$)^{-1}$')
 	plt.legend()
 	plt.grid(True)
 	plt.xlim(1e1, 1e6)
-	plt.savefig("../plots/AsianAvgPriceCall/MonteCarloGammaConvergence_AsianAvgPriceCallOption.jpg")
+	plt.savefig("../plots/AsianAvgPricePut_PartialAvg/MonteCarloGammaConvergence_AsianAvgPricePutOption_PartialAvg.jpg")
 	plt.clf()		
 	
 	plt.figure(figsize=(8, 6))
@@ -202,13 +203,13 @@ def main():
 	plt.fill_between(NSim_array, MonteCarloVega_array_lower_2, MonteCarloVega_array_upper_2, alpha=0.3, label=f'Naive {CIpercentage}% CI Antithetic')	
 	plt.axhline(y=AnalyticVega, color='r', linestyle='--', label=r'Analytic Vega')
 	plt.xscale('log') 
-	plt.title(f'Vega of Asian Avg. Price Call Option  (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
+	plt.title(rf'Vega of Asian Avg. Price Put Option  (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity}, $\bar{{S}}$={Savgsofar})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel(r'Vega $( \$ \cdot \sqrt{\mathrm{year}} )$')
 	plt.legend()
 	plt.grid(True)
 	plt.xlim(1e1, 1e6)
-	plt.savefig("../plots/AsianAvgPriceCall/MonteCarloVegaConvergence_AsianAvgPriceCallOption.jpg")
+	plt.savefig("../plots/AsianAvgPricePut_PartialAvg/MonteCarloVegaConvergence_AsianAvgPricePutOption_PartialAvg.jpg")
 	plt.clf()
 	
 	plt.figure(figsize=(8, 6))
@@ -218,13 +219,13 @@ def main():
 	plt.fill_between(NSim_array, MonteCarloTheta_array_lower_2, MonteCarloTheta_array_upper_2, alpha=0.3, label=f'Naive {CIpercentage}% CI Antithetic')	
 	plt.axhline(y=AnalyticTheta, color='r', linestyle='--', label=r'Analytic $\Theta$')
 	plt.xscale('log') 
-	plt.title(f'Theta of Asian Avg. Price Call Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
+	plt.title(rf'Theta of Asian Avg. Price Put Option (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity}, $\bar{{S}}$={Savgsofar})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel(r'$\Theta$ $( \$ / \mathrm{year} )$')
 	plt.legend()
 	plt.grid(True)
 	plt.xlim(1e1, 1e6)
-	plt.savefig("../plots/AsianAvgPriceCall/MonteCarloThetaConvergence_AsianAvgPriceCallOption.jpg")
+	plt.savefig("../plots/AsianAvgPricePut_PartialAvg/MonteCarloThetaConvergence_AsianAvgPricePutOption_PartialAvg.jpg")
 	plt.clf()
 
 	plt.figure(figsize=(8, 6))
@@ -234,13 +235,13 @@ def main():
 	plt.fill_between(NSim_array, MonteCarloRho_array_lower_2, MonteCarloRho_array_upper_2, alpha=0.3, label=f'Naive {CIpercentage}% CI Antithetic')
 	plt.axhline(y=AnalyticRho, color='r', linestyle='--', label=r'Analytic $\rho$')
 	plt.xscale('log') 
-	plt.title(f'Rho of Asian Avg. Price Call Option  (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity})')
+	plt.title(rf'Rho of Asian Avg. Price Put Option  (S={Stockprice}, K={Strikeprice}, r={interest}, sigma={volatility}, t={timenow}, T={timeatmaturity}, $\bar{{S}}$={Savgsofar})')
 	plt.xlabel('Number of Simulations')
 	plt.ylabel(r'$\rho$ $( \$ \cdot \mathrm{year} )$')
 	plt.legend()
 	plt.grid(True)
 	plt.xlim(1e1, 1e6)
-	plt.savefig("../plots/AsianAvgPriceCall/MonteCarloRhoConvergence_AsianAvgPriceCallOption.jpg")
+	plt.savefig("../plots/AsianAvgPricePut_PartialAvg/MonteCarloRhoConvergence_AsianAvgPricePutOption_PartialAvg.jpg")
 	plt.clf()
 
 	print('Generated plots saved in plots folder.')

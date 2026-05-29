@@ -14,6 +14,7 @@ RETURNS THE OPTION PRICE, GREEKS, AND STANDARD ERRORS
 StandardBaseSeed = 0
 
 
+
 ##################################################################################################################################################
 
 def ApproxAvgPriceCall(S,K,r,sigma,t,T,Savgsofar=None):	
@@ -36,15 +37,37 @@ def ApproxAvgPriceCall(S,K,r,sigma,t,T,Savgsofar=None):
 	#################################################################
 	
 	####### Implement formula from Hull, 11ed., Chapter 26, for the continuos case ########
-	M1 = ( np.exp(r*(T-t))-1 )/( r*(T-t) )*S 
-	M2 = 2*np.exp( (2*r + sigma**2)*(T-t) )*S**2 / (  (r + sigma**2)*(2*r + sigma**2)*(T-t)**2 ) + 2*S**2/( r*(T-t)**2 )*( 1/(2*r+sigma**2) - np.exp( r*(T-t))/(r+sigma**2) )
-	sigmanewsq = 1/(T-t)*np.log(M2/M1**2)
-	F0 = M1 
-	d1 = ( np.log(F0/K) + 0.5*sigmanewsq*(T-t) )/( np.sqrt(sigmanewsq)*np.sqrt(T-t) )
-	d2 = d1 - np.sqrt(sigmanewsq)*np.sqrt(T-t)
-	c = np.exp(-r*(T-t))*(F0*norm.cdf(d1) - K*norm.cdf(d2))
-	p = np.exp(-r*(T-t))*(K*norm.cdf(-d2) - F0*norm.cdf(-d1))
-	
+	if Savgsofar is None:
+		if abs(t) > 0.01:
+			raise ValueError("Option has already been in existence, please enter Savgsofar") ### error if contradictory value entered - small leeway for finite difference
+		else:	
+			M1 = ( np.exp(r*(T-t))-1 )/( r*(T-t) )*S 
+			M2 = 2*np.exp( (2*r + sigma**2)*(T-t) )*S**2 / (  (r + sigma**2)*(2*r + sigma**2)*(T-t)**2 ) + 2*S**2/( r*(T-t)**2 )*( 1/(2*r+sigma**2) - np.exp( r*(T-t))/(r+sigma**2) )
+			sigmanewsq = 1/(T-t)*np.log(M2/M1**2)
+			F0 = M1 
+			d1 = ( np.log(F0/K) + 0.5*sigmanewsq*(T-t) )/( np.sqrt(sigmanewsq)*np.sqrt(T-t) )
+			d2 = d1 - np.sqrt(sigmanewsq)*np.sqrt(T-t)
+			c = np.exp(-r*(T-t))*(F0*norm.cdf(d1) - K*norm.cdf(d2))
+	else:
+		if t == 0:
+			raise ValueError("Option just inititiated, do not enter Savgsofar") ### error if contradictory value entered
+		else:
+			t2 = T-t
+			t1 = t
+			Kstar = (t1+t2)/t2*K - t1/t2*Savgsofar
+			
+			if Kstar > 0:
+				M1 = ( np.exp(r*(T-t))-1 )/( r*(T-t) )*S 
+				M2 = 2*np.exp( (2*r + sigma**2)*(T-t) )*S**2 / (  (r + sigma**2)*(2*r + sigma**2)*(T-t)**2 ) + 2*S**2/( r*(T-t)**2 )*( 1/(2*r+sigma**2) - np.exp( r*(T-t))/(r+sigma**2) )
+				sigmanewsq = 1/(T-t)*np.log(M2/M1**2)
+				F0 = M1 
+				d1 = ( np.log(F0/Kstar) + 0.5*sigmanewsq*(T-t) )/( np.sqrt(sigmanewsq)*np.sqrt(T-t) )
+				d2 = d1 - np.sqrt(sigmanewsq)*np.sqrt(T-t)
+				c = np.exp(-r*(T-t))*(F0*norm.cdf(d1) - Kstar*norm.cdf(d2))*t2/(t1+t2)
+			else:
+				M1 = ( np.exp(r*(T-t))-1 )/( r*(T-t) )*S 
+				c = t2/(t1+t2)*(M1*np.exp(-r*t2) - Kstar*np.exp(-r*t2))
+
 	AvgPriceCall = c
 
 	return(AvgPriceCall)
@@ -72,14 +95,38 @@ def ApproxAvgPricePut(S,K,r,sigma,t,T,Savgsofar=None):
 	#################################################################
 	
 	####### Implement formula from Hull, 11ed., Chapter 26, for the continuos case ########
-	M1 = ( np.exp(r*(T-t))-1 )/( r*(T-t) )*S 
-	M2 = 2*np.exp( (2*r + sigma**2)*(T-t) )*S**2 / (  (r + sigma**2)*(2*r + sigma**2)*(T-t)**2 ) + 2*S**2/( r*(T-t)**2 )*( 1/(2*r+sigma**2) - np.exp( r*(T-t))/(r+sigma**2) )
-	sigmanewsq = 1/(T-t)*np.log(M2/M1**2)
-	F0 = M1 
-	d1 = ( np.log(F0/K) + 0.5*sigmanewsq*(T-t) )/( np.sqrt(sigmanewsq)*np.sqrt(T-t) )
-	d2 = d1 - np.sqrt(sigmanewsq)*np.sqrt(T-t)
-	c = np.exp(-r*(T-t))*(F0*norm.cdf(d1) - K*norm.cdf(d2))
-	p = np.exp(-r*(T-t))*(K*norm.cdf(-d2) - F0*norm.cdf(-d1))
+	if Savgsofar is None:
+		if abs(t) > 0.01:
+			raise ValueError("Option has already been in existence, please enter Savgsofar") ### error if contradictory value entered - small leeway for finite difference
+		else:	
+			M1 = ( np.exp(r*(T-t))-1 )/( r*(T-t) )*S 
+			M2 = 2*np.exp( (2*r + sigma**2)*(T-t) )*S**2 / (  (r + sigma**2)*(2*r + sigma**2)*(T-t)**2 ) + 2*S**2/( r*(T-t)**2 )*( 1/(2*r+sigma**2) - np.exp( r*(T-t))/(r+sigma**2) )
+			sigmanewsq = 1/(T-t)*np.log(M2/M1**2)
+			F0 = M1 
+			d1 = ( np.log(F0/K) + 0.5*sigmanewsq*(T-t) )/( np.sqrt(sigmanewsq)*np.sqrt(T-t) )
+			d2 = d1 - np.sqrt(sigmanewsq)*np.sqrt(T-t)
+			p = np.exp(-r*(T-t))*(K*norm.cdf(-d2) - F0*norm.cdf(-d1))
+	else:
+		if t == 0:
+			raise ValueError("Option just inititiated, do not enter Savgsofar") ### error if contradictory value entered
+		else:
+			t2 = T-t
+			t1 = t
+			Kstar = (t1+t2)/t2*K - t1/t2*Savgsofar
+			
+			if Kstar > 0:
+				M1 = ( np.exp(r*(T-t))-1 )/( r*(T-t) )*S 
+				M2 = 2*np.exp( (2*r + sigma**2)*(T-t) )*S**2 / (  (r + sigma**2)*(2*r + sigma**2)*(T-t)**2 ) + 2*S**2/( r*(T-t)**2 )*( 1/(2*r+sigma**2) - np.exp( r*(T-t))/(r+sigma**2) )
+				sigmanewsq = 1/(T-t)*np.log(M2/M1**2)
+				F0 = M1 
+				d1 = ( np.log(F0/Kstar) + 0.5*sigmanewsq*(T-t) )/( np.sqrt(sigmanewsq)*np.sqrt(T-t) )
+				d2 = d1 - np.sqrt(sigmanewsq)*np.sqrt(T-t)
+				p = t2/(t1+t2)*np.exp(-r*(t2))*( Kstar*norm.cdf(-d2) - M1*norm.cdf(-d1) )  #### double check this
+
+			else:
+				p = 0
+	
+
 	
 	AvgPricePut = p
 
@@ -131,7 +178,7 @@ def ApproxAvgPriceCallWithGreeks(S,K,r,sigma,t,T,Savgsofar=None):
 
 def ApproxAvgPricePutWithGreeks(S,K,r,sigma,t,T,Savgsofar=None):	
 	'''
-	Approximate analytic formula for the Asian average price put.
+	Approximate analytic formula for the Asian average price put. Turnbull–Wakeman Approximation.
 	Also returns the Greeks: Delta, Gamma, Vega, Theta, Rho using the analytic formula for the price and the finite difference method
 	Note: The Payoff is given by Max[K - Savg ,0], where Savg is the arithmetic average price of the underlying.
 
@@ -170,6 +217,7 @@ def ApproxAvgPricePutWithGreeks(S,K,r,sigma,t,T,Savgsofar=None):
 	return(PutPrice, Delta, Gamma, Vega, Theta, Rho)
 
 ##################################################################################################################################################
+##################################################################################################################################################
 
 def ApproxAvgStrikeCall(S,r,sigma,t,T,Savgsofar=None):
 	'''
@@ -192,7 +240,7 @@ def ApproxAvgStrikeCall(S,r,sigma,t,T,Savgsofar=None):
 	Theta
 	Rho
 	'''
-
+	'''
 	M1 = ( np.exp(r*(T-t))-1 )/( r*(T-t) )*S 
 	M2 = 2*np.exp( (2*r + sigma**2)*(T-t) )*S**2 / (  (r + sigma**2)*(2*r + sigma**2)*(T-t)**2 ) + 2*S**2/( r*(T-t)**2 )*( 1/(2*r+sigma**2) - np.exp( r*(T-t))/(r+sigma**2) )
 	sigmanewsq = 1/(T-t)*np.log(M2/M1**2)
@@ -204,6 +252,38 @@ def ApproxAvgStrikeCall(S,r,sigma,t,T,Savgsofar=None):
 	
 	
 	CallPrice = np.exp(-r*(T-t))*( S*np.exp(r*(T-t))*norm.cdf(d1) - F0*norm.cdf(d2) )
+	'''
+	if Savgsofar is None:		
+		if abs(t) > 0.01:
+			raise ValueError("Option has already been in existence, please enter Savgsofar") ### error if contradictory value entered - small leeway for finite difference
+
+		else:	
+			M1 = ( np.exp(r*(T-t))-1 )/( r*(T-t) )*S 
+			M2 = 2*np.exp( (2*r + sigma**2)*(T-t) )*S**2 / (  (r + sigma**2)*(2*r + sigma**2)*(T-t)**2 ) + 2*S**2/( r*(T-t)**2 )*( 1/(2*r+sigma**2) - np.exp( r*(T-t))/(r+sigma**2) )
+			sigmanewsq = 1/(T-t)*np.log(M2/M1**2)
+			F0 = M1
+			sigmaexchangesq = sigmanewsq + sigma**2 - np.sqrt(3)*np.sqrt(sigmanewsq)*sigma
+	
+			d1 = ( np.log( S*np.exp(r*(T-t)) / F0  ) + 0.5*sigmaexchangesq*(T-t) )/( np.sqrt(sigmaexchangesq)*np.sqrt(T-t) )
+			d2 = d1 - np.sqrt(sigmaexchangesq)*np.sqrt(T-t) 
+			CallPrice = np.exp(-r*(T-t))*( S*np.exp(r*(T-t))*norm.cdf(d1) - F0*norm.cdf(d2) )
+	else:
+		if t == 0:
+			raise ValueError("Option just inititiated, do not enter Savgsofar") ### error if contradictory value entered
+		else:
+			Tstar = (T-t)			# remaining time to expiry
+			M1star = ( np.exp(r*Tstar)-1 )/( r*Tstar )*S
+			M2star = 2*S**2/( (r+sigma**2)*Tstar**2 )*( (np.exp( (2*r+sigma**2)*Tstar ) - 1)/( 2*r+sigma**2 ) - ( np.exp( r*Tstar ) - 1 )/r     )
+			alpha = t/T
+			beta = Tstar/T
+			FA = alpha*Savgsofar + beta*M1star
+			ESbarsq = alpha**2*Savgsofar**2 + 2*alpha*beta*Savgsofar*M1star + beta**2*M2star
+			ESTSbar = alpha*Savgsofar*S*np.exp(r*Tstar) + beta*S**2*np.exp(r*Tstar)*( np.exp((r+sigma**2)*Tstar) - 1 )/( (r + sigma**2)*Tstar )
+			vhatsqTstar = sigma**2*Tstar + np.log( ESbarsq/FA**2) - 2*np.log( ESTSbar/(S*np.exp(r*Tstar)*FA) )
+			d1 = ( np.log( S*np.exp(r*Tstar)/FA ) + 0.5*vhatsqTstar )/( np.sqrt(vhatsqTstar) )
+			d2 = d1 - np.sqrt(vhatsqTstar)
+			CallPrice = np.exp(-r*Tstar)*( S*np.exp(r*Tstar)*norm.cdf(d1) - FA*norm.cdf(d2) )	
+	
 	
 	return(CallPrice)
 	
@@ -233,17 +313,37 @@ def ApproxAvgStrikePut(S,r,sigma,t,T,Savgsofar=None):
 	Theta
 	Rho
 	'''
+	if Savgsofar is None:
+		if abs(t) > 0.01:
+			raise ValueError("Option has already been in existence, please enter Savgsofar") ### error if contradictory value entered - small leeway for finite difference
+		else:	
+			M1 = ( np.exp(r*(T-t))-1 )/( r*(T-t) )*S 
+			M2 = 2*np.exp( (2*r + sigma**2)*(T-t) )*S**2 / (  (r + sigma**2)*(2*r + sigma**2)*(T-t)**2 ) + 2*S**2/( r*(T-t)**2 )*( 1/(2*r+sigma**2) - np.exp( r*(T-t))/(r+sigma**2) )
+			sigmanewsq = 1/(T-t)*np.log(M2/M1**2)
+			F0 = M1
+			sigmaexchangesq = sigmanewsq + sigma**2 - np.sqrt(3)*np.sqrt(sigmanewsq)*sigma
 	
-	M1 = ( np.exp(r*(T-t))-1 )/( r*(T-t) )*S 
-	M2 = 2*np.exp( (2*r + sigma**2)*(T-t) )*S**2 / (  (r + sigma**2)*(2*r + sigma**2)*(T-t)**2 ) + 2*S**2/( r*(T-t)**2 )*( 1/(2*r+sigma**2) - np.exp( r*(T-t))/(r+sigma**2) )
-	sigmanewsq = 1/(T-t)*np.log(M2/M1**2)
-	F0 = M1
-	sigmaexchangesq = sigmanewsq + sigma**2 - np.sqrt(3)*np.sqrt(sigmanewsq)*sigma
+			d1 = ( np.log( F0 / (S*np.exp(r*(T-t)) ) ) + 0.5*sigmaexchangesq*(T-t) )/( np.sqrt(sigmaexchangesq)*np.sqrt(T-t) )
+			d2 = d1 - np.sqrt(sigmaexchangesq)*np.sqrt(T-t) 
 	
-	d1 = ( np.log( F0 / (S*np.exp(r*(T-t)) ) ) + 0.5*sigmaexchangesq*(T-t) )/( np.sqrt(sigmaexchangesq)*np.sqrt(T-t) )
-	d2 = d1 - np.sqrt(sigmaexchangesq)*np.sqrt(T-t) 
+			PutPrice = np.exp(-r*(T-t))*( F0*norm.cdf(d1) - S*np.exp(r*(T-t))*norm.cdf(d2) )
 	
-	PutPrice = np.exp(-r*(T-t))*( F0*norm.cdf(d1) - S*np.exp(r*(T-t))*norm.cdf(d2) )	
+	else:
+		if t == 0:
+			raise ValueError("Option just inititiated, do not enter Savgsofar") ### error if contradictory value entered
+		else:
+			Tstar = (T-t)			# remaining time to expiry
+			M1star = ( np.exp(r*Tstar)-1 )/( r*Tstar )*S
+			M2star = 2*S**2/( (r+sigma**2)*Tstar**2 )*( (np.exp( (2*r+sigma**2)*Tstar ) - 1)/( 2*r+sigma**2 ) - ( np.exp( r*Tstar ) - 1 )/r     )
+			alpha = t/T
+			beta = Tstar/T
+			FA = alpha*Savgsofar + beta*M1star
+			ESbarsq = alpha**2*Savgsofar**2 + 2*alpha*beta*Savgsofar*M1star + beta**2*M2star
+			ESTSbar = alpha*Savgsofar*S*np.exp(r*Tstar) + beta*S**2*np.exp(r*Tstar)*( np.exp((r+sigma**2)*Tstar) - 1 )/( (r + sigma**2)*Tstar )
+			vhatsqTstar = sigma**2*Tstar + np.log( ESbarsq/FA**2) - 2*np.log( ESTSbar/(S*np.exp(r*Tstar)*FA) )
+			d1 = ( np.log( S*np.exp(r*Tstar)/FA ) + 0.5*vhatsqTstar )/( np.sqrt(vhatsqTstar) )
+			d2 = d1 - np.sqrt(vhatsqTstar)
+			PutPrice = np.exp( -r*Tstar )*( FA*norm.cdf(-d2) - S*np.exp( r*Tstar )*norm.cdf(-d1) )
 	
 	return(PutPrice)
 
@@ -327,7 +427,7 @@ def ApproxAvgStrikePutWithGreeks(S,r,sigma,t,T,Savgsofar=None):
 ##################### MONTE-CARLO ################################
 
 
-def MonteCarloAvgPriceCallWithGreeks(S, K, r, sigma, t, T, Smintodate=None, n_simulations=250000, n_steps=100, BaseSeed=StandardBaseSeed):
+def MonteCarloAvgPriceCallWithGreeks(S, K, r, sigma, t, T, Savgsofar=None, n_simulations=250000, n_steps=100, BaseSeed=StandardBaseSeed):
 
 	'''
 	Calculates the Asian average price call using Monte-Carlo and the following arguments:
@@ -361,6 +461,16 @@ def MonteCarloAvgPriceCallWithGreeks(S, K, r, sigma, t, T, Smintodate=None, n_si
 	'''
 	###########################
 	###########################
+	
+	Savgsofarorig = Savgsofar
+	if Savgsofar is None:
+		if t != 0:
+			raise ValueError("Option has already been in existence, please enter Savgsofar") ### error if contradictory value entered
+		else:
+			Savgsofar = 0 ### Useful for later - when calculating payoff
+	else:
+		if t == 0:
+			raise ValueError("Option just inititiated, do not enter Savgsofar") ### error if contradictory value entered	
 	
 	### force n_steps and n_simulations to integer values ####
 	n_steps = int(n_steps)
@@ -505,9 +615,10 @@ def MonteCarloAvgPriceCallWithGreeks(S, K, r, sigma, t, T, Smintodate=None, n_si
 	AvgPrice_array_smaller_r = np.concatenate( (AvgPrice_array_smaller_r, AvgPrice_array_smaller_r_AT) )
 	AvgPrice_array_larger_r = np.concatenate( (AvgPrice_array_larger_r, AvgPrice_array_larger_r_AT) )
 	
+	############################################################### 
 	###### CALCULATE THE OPTION PRICE ###################
 	#### calculate the option payoff for each of the terminal prices #####
-	payoff_array = np.maximum( AvgPrice_array - K, 0 )
+	payoff_array = np.maximum( ( Savgsofar*t  + AvgPrice_array*(T-t) ) / (T) - K, 0 )			#### Including weights for partial averaging
 	
 	#### option value array, given the interest rate, time to expiry, and payoff under the risk-neutral probability measure (apply discounting factor from payoff at T to t)
 	option_value_array = np.exp(-r*(T-t))*payoff_array
@@ -521,8 +632,8 @@ def MonteCarloAvgPriceCallWithGreeks(S, K, r, sigma, t, T, Smintodate=None, n_si
 	
 	############## THE GREEKS ######################
 	#### Calculate Delta = dV/dS (partial) #########
-	payoff_array_smaller_S = np.maximum( AvgPrice_array_smaller_S - K, 0 )
-	payoff_array_larger_S = np.maximum( AvgPrice_array_larger_S - K, 0 )
+	payoff_array_smaller_S = np.maximum( ( Savgsofar*t + AvgPrice_array_smaller_S*(T-t) ) / (T) - K, 0 )
+	payoff_array_larger_S = np.maximum( ( Savgsofar*t + AvgPrice_array_larger_S*(T-t) ) / (T) - K, 0 )
 	
 	option_value_array_smaller_S = np.exp(-r*(T-t))*payoff_array_smaller_S
 	option_value_array_larger_S = np.exp(-r*(T-t))*payoff_array_larger_S
@@ -537,8 +648,8 @@ def MonteCarloAvgPriceCallWithGreeks(S, K, r, sigma, t, T, Smintodate=None, n_si
 	gamma_StandardError = stats.sem(gamma_array)
 
 	#### Calculate Vega = dV/dsigma (partial) ######
-	payoff_array_smaller_sigma =  np.maximum( AvgPrice_array_smaller_sigma - K, 0 )
-	payoff_array_larger_sigma = np.maximum( AvgPrice_array_larger_sigma - K, 0 )
+	payoff_array_smaller_sigma =  np.maximum( ( Savgsofar*t + AvgPrice_array_smaller_sigma*(T-t) ) / (T) - K, 0 )
+	payoff_array_larger_sigma = np.maximum( ( Savgsofar*t + AvgPrice_array_larger_sigma*(T-t) ) / (T) - K, 0 )
 	
 	option_value_array_smaller_sigma = np.exp(-r*(T-t))*payoff_array_smaller_sigma
 	option_value_array_larger_sigma = np.exp(-r*(T-t))*payoff_array_larger_sigma
@@ -548,20 +659,29 @@ def MonteCarloAvgPriceCallWithGreeks(S, K, r, sigma, t, T, Smintodate=None, n_si
 	vega_StandardError = stats.sem(vega_array)
 	
 	#### Calculate Theta = -dV/dt (partial)  #######
-	payoff_array_smaller_t =  np.maximum( AvgPrice_array_smaller_t - K, 0 )
-	payoff_array_larger_t = np.maximum( AvgPrice_array_larger_t - K, 0 )
-
+	### we have to do the following trick to keep things consistent if  option time t = 0 and Savgsofar is not entered #####
+	T_smaller_t = T
+	T_larger_t = T
+	
+	if Savgsofarorig is None:
+		T_smaller_t = T + time_step ### total time to maturity time gets longer if t = 0 - use for weighting the denominator when computing the payoff  
+		T_larger_t = T - time_step ### total time to maturity time gets shorter if t = 0 - use for weighting the denominator when computing the payoff
+		
+	payoff_array_smaller_t =   np.maximum( ( Savgsofar*(t-time_step) + AvgPrice_array_smaller_t*(T-(t-time_step)) ) / (T_smaller_t) - K, 0 ) #Think if additional correction needed here
+	payoff_array_larger_t = np.maximum( ( Savgsofar*(t+time_step) + AvgPrice_array_larger_t*(T-(t+time_step)) ) / (T_larger_t) - K, 0 )	#Think if additional correction needed here
+	
+	
 	#### time increment for finite difference is 1 time step ####
-	option_value_array_smaller_t = np.exp(-r*(T-(t-time_step)))*payoff_array_smaller_t	# Think if additional correction should be taken into account to implement partial here
-	option_value_array_larger_t = np.exp(-r*(T-(t+time_step)))*payoff_array_larger_t	# Think if additional correction should be taken into account to implement partial here	
+	option_value_array_smaller_t = np.exp(-r*(T-(t-time_step)))*payoff_array_smaller_t	
+	option_value_array_larger_t = np.exp(-r*(T-(t+time_step)))*payoff_array_larger_t	
 	
 	theta_array = -1*(option_value_array_larger_t-option_value_array_smaller_t)/(2*time_step)
 	theta_value = np.mean(theta_array)
 	theta_StandardError = stats.sem(theta_array)
 	
 	#### Calculate Rho = dV/dr (partial)   #########
-	payoff_array_smaller_r =  np.maximum( AvgPrice_array_smaller_r - K, 0 )
-	payoff_array_larger_r =  np.maximum( AvgPrice_array_larger_r - K, 0 )
+	payoff_array_smaller_r =  np.maximum( ( Savgsofar*t + AvgPrice_array_smaller_r*(T-t) ) / (T) - K, 0 )
+	payoff_array_larger_r =  np.maximum( ( Savgsofar*t + AvgPrice_array_larger_r*(T-t) ) / (T) - K, 0 )
 	
 	option_value_array_smaller_r = np.exp(-(r-1e-4)*(T-t))*payoff_array_smaller_r
 	option_value_array_larger_r = np.exp(-(r+1e-4)*(T-t))*payoff_array_larger_r	
@@ -577,7 +697,7 @@ def MonteCarloAvgPriceCallWithGreeks(S, K, r, sigma, t, T, Smintodate=None, n_si
 ##################################################################		
 
 
-def MonteCarloAvgPricePutWithGreeks(S, K, r, sigma, t, T, Smintodate=None, n_simulations=250000, n_steps=100, BaseSeed=StandardBaseSeed):
+def MonteCarloAvgPricePutWithGreeks(S, K, r, sigma, t, T, Savgsofar=None, n_simulations=250000, n_steps=100, BaseSeed=StandardBaseSeed):
 
 	'''
 	Calculates the Asian average price put using Monte-Carlo and the following arguments:
@@ -611,6 +731,16 @@ def MonteCarloAvgPricePutWithGreeks(S, K, r, sigma, t, T, Smintodate=None, n_sim
 	'''
 	###########################
 	###########################
+	
+	Savgsofarorig = Savgsofar
+	if Savgsofar is None:
+		if t != 0:
+			raise ValueError("Option has already been in existence, please enter Savgsofar") ### error if contradictory value entered
+		else:
+			Savgsofar = 0 ### Useful for later - when calculating payoff
+	else:
+		if t == 0:
+			raise ValueError("Option just inititiated, do not enter Savgsofar") ### error if contradictory value entered	
 	
 	### force n_steps and n_simulations to integer values ####
 	n_steps = int(n_steps)
@@ -758,7 +888,7 @@ def MonteCarloAvgPricePutWithGreeks(S, K, r, sigma, t, T, Smintodate=None, n_sim
 	############################################################### 
 	###### CALCULATE THE OPTION PRICE ###################
 	#### calculate the option payoff for each of the terminal prices #####
-	payoff_array = np.maximum( K - AvgPrice_array , 0 )
+	payoff_array = np.maximum( K - ( Savgsofar*t  + AvgPrice_array*(T-t) ) / (T) , 0 )			#### Including weights for partial averaging
 	
 	#### option value array, given the interest rate, time to expiry, and payoff under the risk-neutral probability measure (apply discounting factor from payoff at T to t)
 	option_value_array = np.exp(-r*(T-t))*payoff_array
@@ -772,8 +902,8 @@ def MonteCarloAvgPricePutWithGreeks(S, K, r, sigma, t, T, Smintodate=None, n_sim
 	
 	############## THE GREEKS ######################
 	#### Calculate Delta = dV/dS (partial) #########
-	payoff_array_smaller_S = np.maximum( K - AvgPrice_array_smaller_S, 0 )
-	payoff_array_larger_S = np.maximum( K - AvgPrice_array_larger_S , 0 )
+	payoff_array_smaller_S = np.maximum( K - ( Savgsofar*t + AvgPrice_array_smaller_S*(T-t) ) / (T) , 0 )
+	payoff_array_larger_S = np.maximum( K - ( Savgsofar*t + AvgPrice_array_larger_S*(T-t) ) / (T) , 0 )
 	
 	option_value_array_smaller_S = np.exp(-r*(T-t))*payoff_array_smaller_S
 	option_value_array_larger_S = np.exp(-r*(T-t))*payoff_array_larger_S
@@ -788,8 +918,8 @@ def MonteCarloAvgPricePutWithGreeks(S, K, r, sigma, t, T, Smintodate=None, n_sim
 	gamma_StandardError = stats.sem(gamma_array)
 
 	#### Calculate Vega = dV/dsigma (partial) ######
-	payoff_array_smaller_sigma =  np.maximum( K - AvgPrice_array_smaller_sigma, 0 )
-	payoff_array_larger_sigma = np.maximum( K - AvgPrice_array_larger_sigma, 0 )
+	payoff_array_smaller_sigma =  np.maximum( K - ( Savgsofar*t + AvgPrice_array_smaller_sigma*(T-t) ) / (T) , 0 )
+	payoff_array_larger_sigma = np.maximum( K - ( Savgsofar*t + AvgPrice_array_larger_sigma*(T-t) ) / (T) , 0 )
 	
 	option_value_array_smaller_sigma = np.exp(-r*(T-t))*payoff_array_smaller_sigma
 	option_value_array_larger_sigma = np.exp(-r*(T-t))*payoff_array_larger_sigma
@@ -799,20 +929,28 @@ def MonteCarloAvgPricePutWithGreeks(S, K, r, sigma, t, T, Smintodate=None, n_sim
 	vega_StandardError = stats.sem(vega_array)
 	
 	#### Calculate Theta = -dV/dt (partial)  #######
-	payoff_array_smaller_t =  np.maximum( K - AvgPrice_array_smaller_t , 0 )
-	payoff_array_larger_t = np.maximum( K - AvgPrice_array_larger_t , 0 )
+	### we have to do the following trick to keep things consistent if  option time t = 0 and Savgsofar is not entered #####
+	T_smaller_t = T
+	T_larger_t = T
+	
+	if Savgsofarorig is None:
+		T_smaller_t = T + time_step ### total time to maturity time gets longer if t = 0 - use for weighting the denominator when computing the payoff  
+		T_larger_t = T - time_step ### total time to maturity time gets shorter if t = 0 - use for weighting the denominator when computing the payoff
+	
+	payoff_array_smaller_t =   np.maximum( K - ( Savgsofar*(t-time_step) + AvgPrice_array_smaller_t*(T-(t-time_step)) ) / (T_smaller_t) , 0 ) #Think if additional correction needed here
+	payoff_array_larger_t = np.maximum( K - ( Savgsofar*(t+time_step) + AvgPrice_array_larger_t*(T-(t+time_step)) ) / (T_larger_t) , 0 )	#Think if additional correction needed here	
 
 	#### time increment for finite difference is 1 time step ####
-	option_value_array_smaller_t = np.exp(-r*(T-(t-time_step)))*payoff_array_smaller_t	# Think if additional correction should be taken into account to implement partial here
-	option_value_array_larger_t = np.exp(-r*(T-(t+time_step)))*payoff_array_larger_t	# Think if additional correction should be taken into account to implement partial here	
+	option_value_array_smaller_t = np.exp(-r*(T-(t-time_step)))*payoff_array_smaller_t	
+	option_value_array_larger_t = np.exp(-r*(T-(t+time_step)))*payoff_array_larger_t	
 	
 	theta_array = -1*(option_value_array_larger_t-option_value_array_smaller_t)/(2*time_step)
 	theta_value = np.mean(theta_array)
 	theta_StandardError = stats.sem(theta_array)
 	
 	#### Calculate Rho = dV/dr (partial)   #########
-	payoff_array_smaller_r =  np.maximum( K - AvgPrice_array_smaller_r , 0 )
-	payoff_array_larger_r =  np.maximum( K - AvgPrice_array_larger_r , 0 )
+	payoff_array_smaller_r =  np.maximum( K - ( Savgsofar*t + AvgPrice_array_smaller_r*(T-t) ) / (T) , 0 )
+	payoff_array_larger_r =  np.maximum( K - ( Savgsofar*t + AvgPrice_array_larger_r*(T-t) ) / (T) , 0 )
 	
 	option_value_array_smaller_r = np.exp(-(r-1e-4)*(T-t))*payoff_array_smaller_r
 	option_value_array_larger_r = np.exp(-(r+1e-4)*(T-t))*payoff_array_larger_r	
@@ -826,7 +964,7 @@ def MonteCarloAvgPricePutWithGreeks(S, K, r, sigma, t, T, Smintodate=None, n_sim
 	
 #################### AVERAGE STRIKE CALL ###########################
 
-def MonteCarloAvgStrikeCallWithGreeks(S, r, sigma, t, T, Smintodate=None, n_simulations=250000, n_steps=100, BaseSeed=StandardBaseSeed):
+def MonteCarloAvgStrikeCallWithGreeks(S, r, sigma, t, T, Savgsofar=None, n_simulations=250000, n_steps=100, BaseSeed=StandardBaseSeed):
 
 	'''
 	Calculates the Asian average strike call using Monte-Carlo and the following arguments:
@@ -859,6 +997,17 @@ def MonteCarloAvgStrikeCallWithGreeks(S, r, sigma, t, T, Smintodate=None, n_simu
 	'''
 	###########################
 	###########################
+
+	
+	Savgsofarorig = Savgsofar
+	if Savgsofar is None:
+		if t != 0:
+			raise ValueError("Option has already been in existence, please enter Savgsofar") ### error if contradictory value entered
+		else:
+			Savgsofar = 0 ### Useful for later - when calculating payoff
+	else:
+		if t == 0:
+			raise ValueError("Option just inititiated, do not enter Savgsofar") ### error if contradictory value entered
 	
 	### force n_steps and n_simulations to integer values ####
 	n_steps = int(n_steps)
@@ -1063,9 +1212,11 @@ def MonteCarloAvgStrikeCallWithGreeks(S, r, sigma, t, T, Smintodate=None, n_simu
 	AvgPrice_array_smaller_r = np.concatenate( (AvgPrice_array_smaller_r, AvgPrice_array_smaller_r_AT) )
 	AvgPrice_array_larger_r = np.concatenate( (AvgPrice_array_larger_r, AvgPrice_array_larger_r_AT) )
 	
+
+	
 	###### CALCULATE THE OPTION PRICE ###################
 	#### calculate the option payoff for each of the terminal prices #####
-	payoff_array = np.maximum( terminal_price_array - AvgPrice_array , 0 )
+	payoff_array = np.maximum( terminal_price_array - (AvgPrice_array*(T-t) + Savgsofar*t)/T , 0 )
 	
 	#### option value array, given the interest rate, time to expiry, and payoff under the risk-neutral probability measure (apply discounting factor from payoff at T to t)
 	option_value_array = np.exp(-r*(T-t))*payoff_array
@@ -1079,8 +1230,8 @@ def MonteCarloAvgStrikeCallWithGreeks(S, r, sigma, t, T, Smintodate=None, n_simu
 	
 	############## THE GREEKS ######################
 	#### Calculate Delta = dV/dS (partial) #########
-	payoff_array_smaller_S = np.maximum( terminal_price_array_smaller_S - AvgPrice_array_smaller_S , 0 )
-	payoff_array_larger_S = np.maximum( terminal_price_array_larger_S - AvgPrice_array_larger_S , 0 )
+	payoff_array_smaller_S = np.maximum( terminal_price_array_smaller_S - (AvgPrice_array_smaller_S*(T-t) + Savgsofar*t)/T  , 0 )
+	payoff_array_larger_S = np.maximum( terminal_price_array_larger_S - (AvgPrice_array_larger_S*(T-t) + Savgsofar*t)/T , 0 )
 	
 	option_value_array_smaller_S = np.exp(-r*(T-t))*payoff_array_smaller_S
 	option_value_array_larger_S = np.exp(-r*(T-t))*payoff_array_larger_S
@@ -1095,8 +1246,8 @@ def MonteCarloAvgStrikeCallWithGreeks(S, r, sigma, t, T, Smintodate=None, n_simu
 	gamma_StandardError = stats.sem(gamma_array)
 
 	#### Calculate Vega = dV/dsigma (partial) ######
-	payoff_array_smaller_sigma =  np.maximum( terminal_price_array_smaller_sigma - AvgPrice_array_smaller_sigma , 0 )
-	payoff_array_larger_sigma = np.maximum( terminal_price_array_larger_sigma - AvgPrice_array_larger_sigma , 0 )
+	payoff_array_smaller_sigma =  np.maximum( terminal_price_array_smaller_sigma - (AvgPrice_array_smaller_sigma*(T-t) + Savgsofar*t)/T , 0 )
+	payoff_array_larger_sigma = np.maximum( terminal_price_array_larger_sigma - (AvgPrice_array_larger_sigma*(T-t) + Savgsofar*t)/T , 0 )
 	
 	option_value_array_smaller_sigma = np.exp(-r*(T-t))*payoff_array_smaller_sigma
 	option_value_array_larger_sigma = np.exp(-r*(T-t))*payoff_array_larger_sigma
@@ -1106,20 +1257,30 @@ def MonteCarloAvgStrikeCallWithGreeks(S, r, sigma, t, T, Smintodate=None, n_simu
 	vega_StandardError = stats.sem(vega_array)
 	
 	#### Calculate Theta = -dV/dt (partial)  #######
-	payoff_array_smaller_t =  np.maximum( terminal_price_array_smaller_t - AvgPrice_array_smaller_t , 0 )
-	payoff_array_larger_t = np.maximum( terminal_price_array_larger_t - AvgPrice_array_larger_t , 0 )
-
+		
+	### we have to do the following trick to keep things consistent if  option time t = 0 and Savgsofar is not entered #####
+	T_smaller_t = T
+	T_larger_t = T
+	
+	if Savgsofarorig is None:
+		T_smaller_t = T + time_step ### total time to maturity time gets longer if t = 0 - use for weighting the denominator when computing the payoff  
+		T_larger_t = T - time_step ### total time to maturity time gets shorter if t = 0 - use for weighting the denominator when computing the payoff
+	
+	payoff_array_smaller_t =  np.maximum( terminal_price_array_smaller_t - (AvgPrice_array_smaller_t*(T-(t-time_step)) + Savgsofar*(t-time_step))/(T_smaller_t) , 0 ) # Think if correction needed here
+	payoff_array_larger_t = np.maximum( terminal_price_array_larger_t - (AvgPrice_array_larger_t*(T-(t+time_step)) + Savgsofar*(t+time_step))/(T_larger_t)  , 0 ) # Think if correction needed here		
+	
+	
 	#### time increment for finite difference is 1 time step ####
-	option_value_array_smaller_t = np.exp(-r*(T-(t-time_step)))*payoff_array_smaller_t	# Think if additional correction should be taken into account to implement partial here
-	option_value_array_larger_t = np.exp(-r*(T-(t+time_step)))*payoff_array_larger_t	# Think if additional correction should be taken into account to implement partial here	
+	option_value_array_smaller_t = np.exp(-r*(T-(t-time_step)))*payoff_array_smaller_t	
+	option_value_array_larger_t = np.exp(-r*(T-(t+time_step)))*payoff_array_larger_t	
 	
 	theta_array = -1*(option_value_array_larger_t-option_value_array_smaller_t)/(2*time_step)
 	theta_value = np.mean(theta_array)
 	theta_StandardError = stats.sem(theta_array)
 	
 	#### Calculate Rho = dV/dr (partial)   #########
-	payoff_array_smaller_r =  np.maximum( terminal_price_array_smaller_r - AvgPrice_array_smaller_r , 0 )
-	payoff_array_larger_r =  np.maximum( terminal_price_array_larger_r - AvgPrice_array_larger_r , 0 )
+	payoff_array_smaller_r =  np.maximum( terminal_price_array_smaller_r - (AvgPrice_array_smaller_r*(T-t) + Savgsofar*t)/T  , 0 )
+	payoff_array_larger_r =  np.maximum( terminal_price_array_larger_r - (AvgPrice_array_larger_r*(T-t) + Savgsofar*t)/T  , 0 )
 	
 	option_value_array_smaller_r = np.exp(-(r-1e-4)*(T-t))*payoff_array_smaller_r
 	option_value_array_larger_r = np.exp(-(r+1e-4)*(T-t))*payoff_array_larger_r	
@@ -1135,7 +1296,7 @@ def MonteCarloAvgStrikeCallWithGreeks(S, r, sigma, t, T, Smintodate=None, n_simu
 
 #################### AVERAGE STRIKE PUT ###########################
 
-def MonteCarloAvgStrikePutWithGreeks(S, r, sigma, t, T, Smintodate=None, n_simulations=250000, n_steps=100, BaseSeed=StandardBaseSeed):
+def MonteCarloAvgStrikePutWithGreeks(S, r, sigma, t, T, Savgsofar=None, n_simulations=250000, n_steps=100, BaseSeed=StandardBaseSeed):
 
 	'''
 	Calculates the Asian average strike put using Monte-Carlo and the following arguments:
@@ -1169,6 +1330,17 @@ def MonteCarloAvgStrikePutWithGreeks(S, r, sigma, t, T, Smintodate=None, n_simul
 	###########################
 	###########################
 	
+	Savgsofarorig = Savgsofar
+	if Savgsofar is None:
+		if t != 0:
+			raise ValueError("Option has already been in existence, please enter Savgsofar") ### error if contradictory value entered
+		else:
+			Savgsofar = 0 ### Useful for later - when calculating payoff
+	else:
+		if t == 0:
+			raise ValueError("Option just inititiated, do not enter Savgsofar") ### error if contradictory value entered
+	
+	
 	### force n_steps and n_simulations to integer values ####
 	n_steps = int(n_steps)
 	n_simulations = int(n_simulations)
@@ -1373,9 +1545,11 @@ def MonteCarloAvgStrikePutWithGreeks(S, r, sigma, t, T, Smintodate=None, n_simul
 	AvgPrice_array_larger_r = np.concatenate( (AvgPrice_array_larger_r, AvgPrice_array_larger_r_AT) )
 
 	
+	############################################################### 
+	
 	###### CALCULATE THE OPTION PRICE ###################
 	#### calculate the option payoff for each of the terminal prices #####
-	payoff_array = np.maximum( AvgPrice_array - terminal_price_array , 0 )
+	payoff_array = np.maximum(  (AvgPrice_array*(T-t) + Savgsofar*t)/T - terminal_price_array , 0 )
 	
 	#### option value array, given the interest rate, time to expiry, and payoff under the risk-neutral probability measure (apply discounting factor from payoff at T to t)
 	option_value_array = np.exp(-r*(T-t))*payoff_array
@@ -1389,8 +1563,8 @@ def MonteCarloAvgStrikePutWithGreeks(S, r, sigma, t, T, Smintodate=None, n_simul
 	
 	############## THE GREEKS ######################
 	#### Calculate Delta = dV/dS (partial) #########
-	payoff_array_smaller_S = np.maximum( AvgPrice_array_smaller_S - terminal_price_array_smaller_S , 0 )
-	payoff_array_larger_S = np.maximum( AvgPrice_array_larger_S - terminal_price_array_larger_S  , 0 )
+	payoff_array_smaller_S = np.maximum( (AvgPrice_array_smaller_S*(T-t) + Savgsofar*t)/T - terminal_price_array_smaller_S , 0 )
+	payoff_array_larger_S = np.maximum( (AvgPrice_array_larger_S*(T-t) + Savgsofar*t)/T - terminal_price_array_larger_S  , 0 )
 	
 	option_value_array_smaller_S = np.exp(-r*(T-t))*payoff_array_smaller_S
 	option_value_array_larger_S = np.exp(-r*(T-t))*payoff_array_larger_S
@@ -1405,8 +1579,8 @@ def MonteCarloAvgStrikePutWithGreeks(S, r, sigma, t, T, Smintodate=None, n_simul
 	gamma_StandardError = stats.sem(gamma_array)
 
 	#### Calculate Vega = dV/dsigma (partial) ######
-	payoff_array_smaller_sigma =  np.maximum(  AvgPrice_array_smaller_sigma - terminal_price_array_smaller_sigma , 0 )
-	payoff_array_larger_sigma = np.maximum( AvgPrice_array_larger_sigma - terminal_price_array_larger_sigma  , 0 )
+	payoff_array_smaller_sigma =  np.maximum( (AvgPrice_array_smaller_sigma*(T-t) + Savgsofar*t)/T - terminal_price_array_smaller_sigma , 0 )
+	payoff_array_larger_sigma = np.maximum( (AvgPrice_array_larger_sigma*(T-t) + Savgsofar*t)/T -  terminal_price_array_larger_sigma  , 0 )
 	
 	option_value_array_smaller_sigma = np.exp(-r*(T-t))*payoff_array_smaller_sigma
 	option_value_array_larger_sigma = np.exp(-r*(T-t))*payoff_array_larger_sigma
@@ -1416,20 +1590,29 @@ def MonteCarloAvgStrikePutWithGreeks(S, r, sigma, t, T, Smintodate=None, n_simul
 	vega_StandardError = stats.sem(vega_array)
 	
 	#### Calculate Theta = -dV/dt (partial)  #######
-	payoff_array_smaller_t =  np.maximum(  AvgPrice_array_smaller_t - terminal_price_array_smaller_t  , 0 )
-	payoff_array_larger_t = np.maximum( AvgPrice_array_larger_t - terminal_price_array_larger_t , 0 )
+	### we have to do the following trick to keep things consistent if  option time t = 0 and Savgsofar is not entered #####
+	T_smaller_t = T
+	T_larger_t = T
+
+	if Savgsofarorig is None:
+		T_smaller_t = T + time_step ### total time to maturity time gets longer if t = 0 - use for weighting the denominator when computing the payoff  
+		T_larger_t = T - time_step ### total time to maturity time gets shorter if t = 0 - use for weighting the denominator when computing the payoff
+
+	
+	payoff_array_smaller_t =  np.maximum(  (AvgPrice_array_smaller_t*(T-(t-time_step)) + Savgsofar*(t-time_step))/(T_smaller_t) - terminal_price_array_smaller_t  , 0 ) # Think if correction needed here
+	payoff_array_larger_t = np.maximum( (AvgPrice_array_larger_t*(T-(t+time_step)) + Savgsofar*(t+time_step))/(T_larger_t) - terminal_price_array_larger_t , 0 ) # Think if correction needed here		
 
 	#### time increment for finite difference is 1 time step ####
-	option_value_array_smaller_t = np.exp(-r*(T-(t-time_step)))*payoff_array_smaller_t	# Think if additional correction should be taken into account to implement partial here
-	option_value_array_larger_t = np.exp(-r*(T-(t+time_step)))*payoff_array_larger_t	# Think if additional correction should be taken into account to implement partial here	
+	option_value_array_smaller_t = np.exp(-r*(T-(t-time_step)))*payoff_array_smaller_t	
+	option_value_array_larger_t = np.exp(-r*(T-(t+time_step)))*payoff_array_larger_t	
 	
 	theta_array = -1*(option_value_array_larger_t-option_value_array_smaller_t)/(2*time_step)
 	theta_value = np.mean(theta_array)
 	theta_StandardError = stats.sem(theta_array)
 	
 	#### Calculate Rho = dV/dr (partial)   #########
-	payoff_array_smaller_r =  np.maximum( AvgPrice_array_smaller_r - terminal_price_array_smaller_r  , 0 )
-	payoff_array_larger_r =  np.maximum( AvgPrice_array_larger_r - terminal_price_array_larger_r  , 0 )
+	payoff_array_smaller_r =  np.maximum(  (AvgPrice_array_smaller_r*(T-t) + Savgsofar*t)/T - terminal_price_array_smaller_r  , 0 )
+	payoff_array_larger_r =  np.maximum( (AvgPrice_array_larger_r*(T-t) + Savgsofar*t)/T - terminal_price_array_larger_r , 0 )
 	
 	option_value_array_smaller_r = np.exp(-(r-1e-4)*(T-t))*payoff_array_smaller_r
 	option_value_array_larger_r = np.exp(-(r+1e-4)*(T-t))*payoff_array_larger_r	
@@ -1444,29 +1627,85 @@ def MonteCarloAvgStrikePutWithGreeks(S, r, sigma, t, T, Smintodate=None, n_simul
 
 
 
+
 ##################################################################		
 
 def main():
 	print('\n')
+	print('1')
 	print(ApproxAvgPriceCall(50,60,0.1,0.4,0,1))
 	print(ApproxAvgPriceCallWithGreeks(50,60,0.1,0.4,0,1))
 	print(MonteCarloAvgPriceCallWithGreeks(50,60,0.1,0.4,0,1))
 	
 	print('\n')
+	print('2')	
 	print(ApproxAvgPricePut(50,60,0.1,0.4,0,1))
 	print(ApproxAvgPricePutWithGreeks(50,60,0.1,0.4,0,1))
 	print(MonteCarloAvgPricePutWithGreeks(50,60,0.1,0.4,0,1))	
 
 	print('\n')
+	print('3')	
 	print(ApproxAvgStrikeCall(50,0.1,0.4,0,1))
 	print(ApproxAvgStrikeCallWithGreeks(50,0.1,0.4,0,1))	
 	print(MonteCarloAvgStrikeCallWithGreeks(50,0.1,0.4,0,1))
 	
 	print('\n')
+	print('4')	
 	print(ApproxAvgStrikePut(50,0.1,0.4,0,1))
 	print(ApproxAvgStrikePutWithGreeks(50,0.1,0.4,0,1))			
-	print(MonteCarloAvgStrikePutWithGreeks(50,0.1,0.4,0,1))		
+	print(MonteCarloAvgStrikePutWithGreeks(50,0.1,0.4,0,1))
+	
+	print('\n')
+	print('5')
+	print(ApproxAvgPriceCall(50,60,0.1,0.4,0.5,1.5,55))	
+	print(ApproxAvgPriceCallWithGreeks(50,60,0.1,0.4,0.5,1.5,55))
+	print(MonteCarloAvgPriceCallWithGreeks(50,60,0.1,0.4,0.5,1.5,55))	
+	
+	print('\n')
+	print('6')	
+	print(ApproxAvgPriceCall(50,60,0.1,0.4,1.0,1.5,100))	
+	print(ApproxAvgPriceCallWithGreeks(50,60,0.1,0.4,1.0,1.5,100))
+	print(MonteCarloAvgPriceCallWithGreeks(50,60,0.1,0.4,1.0,1.5,100))		
+	
+	print('\n')
+	print('7')	
+	print(ApproxAvgPricePut(50,60,0.1,0.4,0.5,1.5,55))	
+	print(ApproxAvgPricePutWithGreeks(50,60,0.1,0.4,0.5,1.5,55))
+	print(MonteCarloAvgPricePutWithGreeks(50,60,0.1,0.4,0.5,1.5,55))	
+	
+	print('\n')
+	print('8')	
+	print(ApproxAvgPricePut(50,60,0.1,0.4,1.0,1.5,100))	
+	print(ApproxAvgPricePutWithGreeks(50,60,0.1,0.4,1.0,1.5,100))
+	print(MonteCarloAvgPricePutWithGreeks(50,60,0.1,0.4,1.0,1.5,100))	
+	
+	print('\n')
+	print('9')	
+	print(ApproxAvgStrikeCall(50,0.1,0.4,0.5,1.5,55))	
+	print(ApproxAvgStrikeCallWithGreeks(50,0.1,0.4,0.5,1.5,55))
+	print(MonteCarloAvgStrikeCallWithGreeks(50,0.1,0.4,0.5,1.5,55))	
+	
+	print('\n')
+	print('10')	
+	print(ApproxAvgStrikeCall(50,0.1,0.4,1.0,1.5,100))	
+	print(ApproxAvgStrikeCallWithGreeks(50,0.1,0.4,1.0,1.5,100))
+	print(MonteCarloAvgStrikeCallWithGreeks(50,0.1,0.4,1.0,1.5,100))	
+	
+	print('\n')
+	print('11')	
+	print(ApproxAvgStrikePutWithGreeks(50,0.1,0.4,0.5,1.5,55))	
+	print(ApproxAvgStrikePutWithGreeks(50,0.1,0.4,0.5,1.5,55))
+	print(MonteCarloAvgStrikePutWithGreeks(50,0.1,0.4,0.5,1.5,55))	
+
+	print('\n')
+	print('12')	
+	print(ApproxAvgStrikePutWithGreeks(50,0.1,0.4,1.0,1.5,100))	
+	print(ApproxAvgStrikePutWithGreeks(50,0.1,0.4,1.0,1.5,100))
+	print(MonteCarloAvgStrikePutWithGreeks(50,0.1,0.4,1.0,1.5,100))		
+	
+
+				
 
 if __name__ == "__main__":
-	main()	    									
+	main()	  									
   		
