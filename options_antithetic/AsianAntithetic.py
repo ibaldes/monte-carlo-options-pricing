@@ -907,7 +907,7 @@ def MonteCarloAvgStrikeCallWithGreeks(S, r, sigma, t, T, Smintodate=None, n_simu
 	############ Terminal prices ##########################
 	terminal_price_array = np.exp(log_path_array[:, -2])		
 	
-	price_step = 0.1
+	price_step = 0.01
 	terminal_price_array_smaller_S = terminal_price_array*(S-price_step)/S
 	terminal_price_array_larger_S = terminal_price_array*(S+price_step)/S 
 	
@@ -1216,7 +1216,7 @@ def MonteCarloAvgStrikePutWithGreeks(S, r, sigma, t, T, Smintodate=None, n_simul
 	############ Terminal prices ##########################
 	terminal_price_array = np.exp(log_path_array[:, -2])		
 	
-	price_step = 0.1
+	price_step = 0.01
 	terminal_price_array_smaller_S = terminal_price_array*(S-price_step)/S
 	terminal_price_array_larger_S = terminal_price_array*(S+price_step)/S 
 	
