@@ -1,6 +1,6 @@
 *****************************************************
 
-Code for Monte-Carlo pricing of options assuming the Black-Scholes model and risk-neutral probability. Undergoing further improvements and development (American, Bermudan, Parisian, Asian, ... Options.)
+Code for Monte-Carlo pricing of options assuming the Black-Scholes model and risk-neutral probability. Undergoing further improvements and development (e.g. improvements in method used to calculate gamma for barrier options.)
 
 *****************************************************
 # Libraries Used 
@@ -30,6 +30,11 @@ Contains standard scripts for calculating options pricing using analytic formula
 1. Analytic pricing for Look Back Puts and Calls with Floating or Fixed Strikes.
 2. Monte-Carlo pricing for Look Back Puts and Calls with Floating or Fixed Strikes. These also return standard errors of the prices and greeks.
 
+* Asian.py contains functions for the following:
+1. Approximate analytic pricing for Asian options with arithmetic averaging applied to the price or strike.
+2. Monte-Carlo pricing for Asian options with arithmetic averaging applied to the price or strike.. These also return standard errors of the prices and greeks.
+
+
 * PricingExample.py calls the functions from EuropeanVanilla.py and EuropeanBarrier.py showing some example prices.
 
 ## options_antithetic folder
@@ -37,11 +42,13 @@ Similar to options_benchmark, but uses antithetic variates. The first-half batch
 
 The scripts are:
 
-* EuropeanVanillaAntithetic.py is as the above EuropeanVanilla, but with Antithetic Variates for the Monte-Carlo.
+* EuropeanVanillaAntithetic.py is as the above EuropeanVanilla.py, but with Antithetic Variates for the Monte-Carlo.
 
-* EuropeanBarrierAntithetic.py is as the above EuropeanBarrier, but with Antithetic Variates for the Monte-Carlo.
+* EuropeanBarrierAntithetic.py is as the above EuropeanBarrier.py, but with Antithetic Variates for the Monte-Carlo.
 
-* LookBackAntithetic.py is as the above LookBack, but with Antithetic Variates for the Monte-Carlo.
+* LookBackAntithetic.py is as the above LookBack.py, but with Antithetic Variates for the Monte-Carlo.
+
+* Asian.py is as the above Asian.py, but with Antithetic Variates for the Monte-Carlo.
 
 
 ## Nsims_scaling folder
@@ -65,6 +72,14 @@ The scripts are:
 * ScalingWithNsimulations_LookBackCall_FixedStrike.py calls functions from LookBack.py and LookBackAntithetic.py and shows the convergence of the Monte-Carlo calculation of the Look Back fixed strike call option price with the analytic result. 
 
 * ScalingWithNsimulations_LookBackCall_FixedStrike.py calls functions from LookBack.py and LookBackAntithetic.py  and shows the convergence of the Monte-Carlo calculation of the Look Back fixed strike call option price with the analytic result. 
+
+* ScalingWithNsimulations_AsianAvgPrice_Call.py calls functions from Asian.py and AsianAntithetic.py  and shows the convergence of the Monte-Carlo calculation of the Look Back fixed strike call option price with the analytic result.
+
+* ScalingWithNsimulations_AsianAvgPrice_Put.py calls functions from Asian.py and AsianAntithetic.py  and shows the convergence of the Monte-Carlo calculation of the Look Back fixed strike call option price with the analytic result.
+
+* ScalingWithNsimulations_AsianAvgStrike_Call.py calls functions from Asian.py and AsianAntithetic.py  and shows the convergence of the Monte-Carlo calculation of the Look Back fixed strike call option price with the analytic result. 
+
+* ScalingWithNsimulations_AsianAvgStrike_Put.py calls functions from Asian.py and AsianAntithetic.py  and shows the convergence of the Monte-Carlo calculation of the Look Back fixed strike call option price with the analytic result. 
 
 ## visualisations folder
 
