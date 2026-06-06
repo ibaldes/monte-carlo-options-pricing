@@ -1,12 +1,12 @@
 *****************************************************
 
-Code for Monte-Carlo pricing of options assuming the Black-Scholes model and risk-neutral probability. Undergoing further improvements and development (e.g. improvements in method used to calculate gamma for barrier options.)
+Code for Monte-Carlo pricing of options assuming the Black-Scholes model and risk-neutral probability. Comparison of 
 
 *****************************************************
 # Libraries Used 
 
 - sys
-- os
+- pathlib
 - pandas
 - numpy
 - matplotlib 
@@ -32,7 +32,7 @@ Contains standard scripts for calculating options pricing using analytic formula
 
 * Asian.py contains functions for the following:
 1. Approximate analytic pricing for Asian options with arithmetic averaging applied to the price or strike.
-2. Monte-Carlo pricing for Asian options with arithmetic averaging applied to the price or strike.. These also return standard errors of the prices and greeks.
+2. Monte-Carlo pricing for Asian options with arithmetic averaging applied to the price or strike. These also return standard errors of the prices and greeks.
 
 
 * PricingExample.py calls the functions from EuropeanVanilla.py and EuropeanBarrier.py showing some example prices.
@@ -48,38 +48,26 @@ The scripts are:
 
 * LookBackAntithetic.py is as the above LookBack.py, but with Antithetic Variates for the Monte-Carlo.
 
-* Asian.py is as the above Asian.py, but with Antithetic Variates for the Monte-Carlo.
+* AsianAntithetic.py is as the above Asian.py, but with Antithetic Variates for the Monte-Carlo.
+
+## options_pathwise folder
+Similar to options_benchmark, but uses antithetic variates, and pathwise derivatives for evaluating the greeks Delta and Gamma.
+
+The scripts are:
+
+* EuropeanVanillaPathwise.py is as the above EuropeanVanillaAntithetic.py, but with pathwise Delta and Gamma.
+
+* BarrierPathwise.py is as the above EuropeanBarrierAntithetic.py.py, but with pathwise Delta and Gamma. 
+
+* LookBackPathwise.py is as the above LookBackAntithetic.py, but with pathwise Delta and Gamma.
+
+* AsianPathwise.py is as the above AsianAntithetic.py, but with pathwise Delta and Gamma.
+
 
 
 ## Nsims_scaling folder
 
-* ScalingWithNsimulations_CallOption.py calls functions from EuropeanVanilla.py and EuropeanVanillaAntithetic.py and shows the convergence of the Monte-Carlo calculation of the VANILLA call option price and greeks with the analytic result for large n_simulations. 
-
-* ScalingWithNsimulations_PutOption.py calls functions from EuropeanVanilla.py and EuropeanVanillaAntithetic.py  and shows the convergence of the Monte-Carlo calculation of the VANILLA put option price and greeks with the analytic result for large n_simulations.
-
-* ScalingWithNsimulations_CallOption_KnockInBarrier.py calls functions from EuropeanBarrier.py and EuropeanBarrierAntithetic.py and shows the convergence of the Monte-Carlo calculation of the KNOCK IN BARRIER call option price and greeks with the analytic result for large n_simulations. (Note estimates of the Greeks, particularly Gamma, are still to be improved).
-
-* ScalingWithNsimulations_CallOption_KnockOutBarrier.py calls functions from EuropeanBarrier.py and EuropeanBarrierAntithetic.py and shows the convergence of the Monte-Carlo calculation of the KNOCK OUT BARRIER call option price and greeks with the analytic result for large n_simulations.
-
-* ScalingWithNsimulations_PutOption_KnockInBarrier.py calls functions from EuropeanBarrier.py and EuropeanBarrierAntithetic.py and shows the convergence of the Monte-Carlo calculation of the KNOCK IN BARRIER put option price and greeks with the analytic result for large n_simulations. 
-
-* ScalingWithNsimulations_PutOption_KnockOutBarrier.py calls functions from EuropeanBarrier.py and EuropeanBarrierAntithetic.py and shows the convergence of the Monte-Carlo calculation of the KNOCK OUT BARRIER put option price and greeks with the analytic result for large n_simulations. 
-
-* ScalingWithNsimulations_LookBackCall_FloatingStrike.py calls functions from LookBack.py and LookBackAntithetic.py  and shows the convergence of the Monte-Carlo calculation of the Look Back Floating strike call option price with the analytic result. 
-
-* ScalingWithNsimulations_LookBackPut_FloatingStrike.py calls functions from LookBack.py and LookBackAntithetic.py and shows the convergence of the Monte-Carlo calculation of the Look Back Floating strike put option price with the analytic result. 
-
-* ScalingWithNsimulations_LookBackCall_FixedStrike.py calls functions from LookBack.py and LookBackAntithetic.py and shows the convergence of the Monte-Carlo calculation of the Look Back fixed strike call option price with the analytic result. 
-
-* ScalingWithNsimulations_LookBackCall_FixedStrike.py calls functions from LookBack.py and LookBackAntithetic.py  and shows the convergence of the Monte-Carlo calculation of the Look Back fixed strike call option price with the analytic result. 
-
-* ScalingWithNsimulations_AsianAvgPrice_Call.py calls functions from Asian.py and AsianAntithetic.py  and shows the convergence of the Monte-Carlo calculation of the Look Back fixed strike call option price with the analytic result.
-
-* ScalingWithNsimulations_AsianAvgPrice_Put.py calls functions from Asian.py and AsianAntithetic.py  and shows the convergence of the Monte-Carlo calculation of the Look Back fixed strike call option price with the analytic result.
-
-* ScalingWithNsimulations_AsianAvgStrike_Call.py calls functions from Asian.py and AsianAntithetic.py  and shows the convergence of the Monte-Carlo calculation of the Look Back fixed strike call option price with the analytic result. 
-
-* ScalingWithNsimulations_AsianAvgStrike_Put.py calls functions from Asian.py and AsianAntithetic.py  and shows the convergence of the Monte-Carlo calculation of the Look Back fixed strike call option price with the analytic result. 
+Contains scripts for calculating options prices and greeks using monte-carlo and comparing to the analytic formulas. Shows the convergence as N_simulations is increased. Contains separate folders for vanilla, barrier, lookback, and asian options. The resulting plots are saved in the plots folder.
 
 ## visualisations folder
 
@@ -87,10 +75,10 @@ Contains a script generating some geometric brownian motion paths for stock pric
 
 ## plots folder
 
-Stores the generated plots.
+Stores the generated plots. Contains separate folders for vanilla, barrier, lookback, and asian options.
 
 *****************************************************
 # Eventual Utility
 
-These scripts can eventually be used for generating training data for neural network pricing of exotics. Similarly, they can be used to validate output of PDE based approaches for exotic pricing.
+These scripts can eventually be used for validating methods to be applied to exotics without analytic results. They could also be used to generate training data for neural network pricing of exotics. Similarly, they can be used to validate output of PDE based approaches for exotic pricing.
 
