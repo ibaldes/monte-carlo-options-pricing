@@ -1,6 +1,6 @@
 *****************************************************
 
-Code for Monte-Carlo pricing of options assuming the Black-Scholes model and risk-neutral probability. Comparison of 
+Code for Monte-Carlo pricing of options assuming the Black-Scholes model and risk-neutral probability. Comparison of prices and greeks to known analytic formulas. 
 
 *****************************************************
 # Libraries Used 
