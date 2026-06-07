@@ -208,28 +208,6 @@ def MonteCarloVanillaEuropeanCallWithGreeks(S, K, r, sigma, t, T, n_simulations=
 	
 	#### calculate the terminal prices and store them as a numpy array ####
 	terminal_price_array = np.exp(log_path_array[:, -2])	
-	
-	##### perturb in sigma for vega ###########
-	smaller_sigma = (sigma-0.01)
-	larger_sigma = (sigma+0.01)
-	log_step_array_smaller_sigma = (r - 0.5*smaller_sigma**2)*time_step + np.sqrt(time_step)*smaller_sigma*brownian_array
-	log_step_array_larger_sigma = (r - 0.5*larger_sigma**2)*time_step + np.sqrt(time_step)*larger_sigma*brownian_array	
-	log_path_array_smaller_sigma = np.log(S) + np.cumsum( log_step_array_smaller_sigma, axis = 1 ) 
-	log_path_array_larger_sigma = np.log(S) + np.cumsum( log_step_array_larger_sigma, axis = 1 ) 	
-	terminal_price_array_smaller_sigma = np.exp(log_path_array_smaller_sigma[:, -2])
-	terminal_price_array_larger_sigma = np.exp(log_path_array_larger_sigma[:, -2])
-	
-	##### perturb in t for theta ##############
-	terminal_price_array_smaller_t = np.exp(log_path_array[:, -1])
-	terminal_price_array_larger_t = np.exp(log_path_array[:, -3])
-	
-	#### perturb in r for rho #################
-	log_step_array_smaller_r = (r - 1e-4 - 0.5*sigma**2)*time_step + np.sqrt(time_step)*sigma*brownian_array
-	log_step_array_larger_r = (r + 1e-4 - 0.5*sigma**2)*time_step + np.sqrt(time_step)*sigma*brownian_array	
-	log_path_array_smaller_r = np.log(S) + np.cumsum( log_step_array_smaller_r, axis = 1 ) 
-	log_path_array_larger_r = np.log(S) + np.cumsum( log_step_array_larger_r, axis = 1 ) 	
-	terminal_price_array_smaller_r = np.exp(log_path_array_smaller_r[:, -2])
-	terminal_price_array_larger_r = np.exp(log_path_array_larger_r[:, -2])
 
 	#################################################
 	######	Antithetic Pairs of the above ###########
@@ -240,54 +218,12 @@ def MonteCarloVanillaEuropeanCallWithGreeks(S, K, r, sigma, t, T, n_simulations=
 	#### calculate the terminal prices and store them as a numpy array ####
 	terminal_price_array_AT = np.exp(log_path_array_AT[:, -2])
 	
-	##### perturb in sigma for vega ###########
-	smaller_sigma = (sigma-0.01)
-	larger_sigma = (sigma+0.01)
-	log_step_array_smaller_sigma_AT = (r - 0.5*smaller_sigma**2)*time_step + np.sqrt(time_step)*smaller_sigma*brownian_array_AT
-	log_step_array_larger_sigma_AT = (r - 0.5*larger_sigma**2)*time_step + np.sqrt(time_step)*larger_sigma*brownian_array_AT	
-	log_path_array_smaller_sigma_AT = np.log(S) + np.cumsum( log_step_array_smaller_sigma_AT, axis = 1 ) 
-	log_path_array_larger_sigma_AT = np.log(S) + np.cumsum( log_step_array_larger_sigma_AT, axis = 1 ) 	
-	terminal_price_array_smaller_sigma_AT = np.exp(log_path_array_smaller_sigma_AT[:, -2])
-	terminal_price_array_larger_sigma_AT = np.exp(log_path_array_larger_sigma_AT[:, -2])
-	
-	##### perturb in t for theta ##############
-	terminal_price_array_smaller_t_AT = np.exp(log_path_array_AT[:, -1])
-	terminal_price_array_larger_t_AT = np.exp(log_path_array_AT[:, -3])
-	
-	#### perturb in r for rho #################
-	log_step_array_smaller_r_AT = (r - 1e-4 - 0.5*sigma**2)*time_step + np.sqrt(time_step)*sigma*brownian_array_AT
-	log_step_array_larger_r_AT = (r + 1e-4 - 0.5*sigma**2)*time_step + np.sqrt(time_step)*sigma*brownian_array_AT	
-	log_path_array_smaller_r_AT = np.log(S) + np.cumsum( log_step_array_smaller_r_AT, axis = 1 ) 
-	log_path_array_larger_r_AT = np.log(S) + np.cumsum( log_step_array_larger_r_AT, axis = 1 ) 	
-	terminal_price_array_smaller_r_AT = np.exp(log_path_array_smaller_r_AT[:, -2])
-	terminal_price_array_larger_r_AT = np.exp(log_path_array_larger_r_AT[:, -2])
-
 	##### flatten arrays #####
 	terminal_price_array = terminal_price_array.flatten()	
-	terminal_price_array_smaller_sigma = terminal_price_array_smaller_sigma.flatten()
-	terminal_price_array_larger_sigma = terminal_price_array_larger_sigma.flatten()
-	terminal_price_array_smaller_t = terminal_price_array_smaller_t.flatten()
-	terminal_price_array_larger_t = terminal_price_array_larger_t.flatten()
-	terminal_price_array_smaller_r = terminal_price_array_smaller_r.flatten()
-	terminal_price_array_larger_r = terminal_price_array_larger_r.flatten()
-	
 	terminal_price_array_AT = terminal_price_array_AT.flatten()
-	terminal_price_array_smaller_sigma_AT = terminal_price_array_smaller_sigma_AT.flatten()
-	terminal_price_array_larger_sigma_AT = terminal_price_array_larger_sigma_AT.flatten()
-	terminal_price_array_smaller_t_AT = terminal_price_array_smaller_t_AT.flatten()
-	terminal_price_array_larger_t_AT = terminal_price_array_larger_t_AT.flatten()
-	terminal_price_array_smaller_r_AT = terminal_price_array_smaller_r_AT.flatten()
-	terminal_price_array_larger_r_AT = terminal_price_array_larger_r_AT.flatten()
 	
 	################### concatenate arrays #################			
 	terminal_price_array = np.concatenate( (terminal_price_array, terminal_price_array_AT) )
-	terminal_price_array_smaller_sigma = np.concatenate(( terminal_price_array_smaller_sigma, terminal_price_array_smaller_sigma_AT  ) )
-	terminal_price_array_larger_sigma = np.concatenate(( terminal_price_array_larger_sigma, terminal_price_array_larger_sigma_AT  ) )
-	terminal_price_array_smaller_t = np.concatenate(( terminal_price_array_smaller_t, terminal_price_array_smaller_t_AT  ) )
-	terminal_price_array_larger_t = np.concatenate(( terminal_price_array_larger_t, terminal_price_array_larger_t_AT  ) )
-	terminal_price_array_smaller_r = np.concatenate(( terminal_price_array_smaller_r, terminal_price_array_smaller_r_AT  ) )
-	terminal_price_array_larger_r = np.concatenate(( terminal_price_array_larger_r, terminal_price_array_larger_r_AT ) )
-
 
 	###### CALCULATE THE OPTION PRICE ###################
 	### extract "central" terminal price array #######
@@ -318,47 +254,29 @@ def MonteCarloVanillaEuropeanCallWithGreeks(S, K, r, sigma, t, T, n_simulations=
 	gamma_StandardError = stats.sem(gamma_array)
 
 	#### Calculate Vega = dV/dsigma (partial) ######
-	payoff_array_smaller_sigma = np.maximum(terminal_price_array_smaller_sigma-K, 0)
-	payoff_array_larger_sigma = np.maximum(terminal_price_array_larger_sigma-K, 0)
+	Z_final_value_array = 1/(sigma*np.sqrt(T-t))*(np.log(terminal_price_array/S) - (r - 0.5*sigma**2)*(T-t)) #### Final Z ~ N(0,1) values needed for some of the pathwise derivatives
 	
-	option_value_array_smaller_sigma = np.exp(-r*(T-t))*payoff_array_smaller_sigma
-	option_value_array_larger_sigma = np.exp(-r*(T-t))*payoff_array_larger_sigma
-	
-	vega_array = (option_value_array_larger_sigma-option_value_array_smaller_sigma)/(2*0.01)
-	
+	Extra_smoothing = 0.1
+	vega_array = np.exp(-r*(T-t))*Heaviside_smoothed(terminal_price_array-K, Extra_smoothing)*terminal_price_array*(-sigma*(T-t)+Z_final_value_array*np.sqrt(T-t))
 	vega_value = np.mean(vega_array)
-	
 	vega_StandardError = stats.sem(vega_array)
 	
 	#### Calculate Theta = -dV/dt (partial)  #######
+	Extra_smoothing = 0.1
+	theta_array = np.exp(-r*(T-t))*Heaviside_smoothed(terminal_price_array - K, Extra_smoothing)*terminal_price_array*(-1)*( (r - 0.5*sigma**2) + 0.5*sigma*Z_final_value_array/np.sqrt(T-t) ) 
 	
-	payoff_array_smaller_t = np.maximum(terminal_price_array_smaller_t-K, 0)
-	payoff_array_larger_t = np.maximum(terminal_price_array_larger_t-K, 0)
+	theta_value_part = np.mean(theta_array)
+	theta_value = -1*(r*option_value + theta_value_part)	#### remembering I am using an overall minus sign in the definition of theta.
 	
-	time_step = (T-t)/n_steps
+	theta_StandardError = np.sqrt( r**2*option_value_StandardError**2 + stats.sem(theta_array)**2 )
 	
-	#### time increment for finite difference is 1 time step ####
-	option_value_array_smaller_t = np.exp(-r*(T-(t-time_step)))*payoff_array_smaller_t
-	option_value_array_larger_t = np.exp(-r*(T-(t+time_step)))*payoff_array_larger_t
+	#### Calculate Rho = dV/dr (partial)   #########
+	rho_array = np.exp(-r*(T-t))*(T-t)*terminal_price_array*Heaviside_smoothed(terminal_price_array-K, Extra_smoothing)
+	rho_value_part = np.mean(rho_array)
 	
-	theta_array = -1*(option_value_array_larger_t-option_value_array_smaller_t)/(2*time_step)
+	rho_value = -(T-t)*option_value + rho_value_part
+	rho_StandardError = np.sqrt( (T-t)**2*option_value_StandardError**2 + stats.sem(rho_array)**2 )
 	
-	theta_value = np.mean(theta_array)
-	
-	theta_StandardError = stats.sem(theta_array)
-	
-	#### Calculate Rho = dV/dr (partial)   #########	
-	payoff_array_smaller_r = np.maximum(terminal_price_array_smaller_r-K, 0)
-	payoff_array_larger_r = np.maximum(terminal_price_array_larger_r-K, 0)
-	
-	option_value_array_smaller_r = np.exp(-(r-1e-4)*(T-t))*payoff_array_smaller_r
-	option_value_array_larger_r = np.exp(-(r+1e-4)*(T-t))*payoff_array_larger_r	
-	
-	rho_array = (option_value_array_larger_r-option_value_array_smaller_r)/(2*1e-4)
-	
-	rho_value = np.mean(rho_array)
-	
-	rho_StandardError = stats.sem(rho_array)
 	
 	#### Return the option value the Greeks and standard errors of all the quantities ###
 	return(option_value, delta_value, gamma_value, vega_value, theta_value, rho_value, option_value_StandardError, delta_StandardError, gamma_StandardError, vega_StandardError, theta_StandardError, rho_StandardError)
@@ -417,28 +335,6 @@ def MonteCarloVanillaEuropeanPutWithGreeks(S, K, r, sigma, t, T, n_simulations=2
 	#### calculate the terminal prices and store them as a numpy array ####
 	terminal_price_array = np.exp(log_path_array[:, -2])
 	
-	##### perturb in sigma for vega ###########
-	smaller_sigma = (sigma-0.01)
-	larger_sigma = (sigma+0.01)
-	log_step_array_smaller_sigma = (r - 0.5*smaller_sigma**2)*time_step + np.sqrt(time_step)*smaller_sigma*brownian_array
-	log_step_array_larger_sigma = (r - 0.5*larger_sigma**2)*time_step + np.sqrt(time_step)*larger_sigma*brownian_array	
-	log_path_array_smaller_sigma = np.log(S) + np.cumsum( log_step_array_smaller_sigma, axis = 1 ) 
-	log_path_array_larger_sigma = np.log(S) + np.cumsum( log_step_array_larger_sigma, axis = 1 ) 	
-	terminal_price_array_smaller_sigma = np.exp(log_path_array_smaller_sigma[:, -2])
-	terminal_price_array_larger_sigma = np.exp(log_path_array_larger_sigma[:, -2])
-	
-	##### perturb in t for theta ##############
-	terminal_price_array_smaller_t = np.exp(log_path_array[:, -1])
-	terminal_price_array_larger_t = np.exp(log_path_array[:, -3])
-	
-	#### perturb in r for rho #################
-	log_step_array_smaller_r = (r - 1e-4 - 0.5*sigma**2)*time_step + np.sqrt(time_step)*sigma*brownian_array
-	log_step_array_larger_r = (r + 1e-4 - 0.5*sigma**2)*time_step + np.sqrt(time_step)*sigma*brownian_array	
-	log_path_array_smaller_r = np.log(S) + np.cumsum( log_step_array_smaller_r, axis = 1 ) 
-	log_path_array_larger_r = np.log(S) + np.cumsum( log_step_array_larger_r, axis = 1 ) 	
-	terminal_price_array_smaller_r = np.exp(log_path_array_smaller_r[:, -2])
-	terminal_price_array_larger_r = np.exp(log_path_array_larger_r[:, -2])
-
 	#################################################
 	######	Antithetic Pairs of the above ###########
 	brownian_array_AT = -brownian_array
@@ -448,54 +344,12 @@ def MonteCarloVanillaEuropeanPutWithGreeks(S, K, r, sigma, t, T, n_simulations=2
 	#### calculate the terminal prices and store them as a numpy array ####
 	terminal_price_array_AT = np.exp(log_path_array_AT[:, -2])
 	
-	##### perturb in sigma for vega ###########
-	smaller_sigma = (sigma-0.01)
-	larger_sigma = (sigma+0.01)
-	log_step_array_smaller_sigma_AT = (r - 0.5*smaller_sigma**2)*time_step + np.sqrt(time_step)*smaller_sigma*brownian_array_AT
-	log_step_array_larger_sigma_AT = (r - 0.5*larger_sigma**2)*time_step + np.sqrt(time_step)*larger_sigma*brownian_array_AT	
-	log_path_array_smaller_sigma_AT = np.log(S) + np.cumsum( log_step_array_smaller_sigma_AT, axis = 1 ) 
-	log_path_array_larger_sigma_AT = np.log(S) + np.cumsum( log_step_array_larger_sigma_AT, axis = 1 ) 	
-	terminal_price_array_smaller_sigma_AT = np.exp(log_path_array_smaller_sigma_AT[:, -2])
-	terminal_price_array_larger_sigma_AT = np.exp(log_path_array_larger_sigma_AT[:, -2])
-	
-	##### perturb in t for theta ##############
-	terminal_price_array_smaller_t_AT = np.exp(log_path_array_AT[:, -1])
-	terminal_price_array_larger_t_AT = np.exp(log_path_array_AT[:, -3])
-	
-	#### perturb in r for rho #################
-	log_step_array_smaller_r_AT = (r - 1e-4 - 0.5*sigma**2)*time_step + np.sqrt(time_step)*sigma*brownian_array_AT
-	log_step_array_larger_r_AT = (r + 1e-4 - 0.5*sigma**2)*time_step + np.sqrt(time_step)*sigma*brownian_array_AT	
-	log_path_array_smaller_r_AT = np.log(S) + np.cumsum( log_step_array_smaller_r_AT, axis = 1 ) 
-	log_path_array_larger_r_AT = np.log(S) + np.cumsum( log_step_array_larger_r_AT, axis = 1 ) 	
-	terminal_price_array_smaller_r_AT = np.exp(log_path_array_smaller_r_AT[:, -2])
-	terminal_price_array_larger_r_AT = np.exp(log_path_array_larger_r_AT[:, -2])
-
 	##### flatten arrays #####
 	terminal_price_array = terminal_price_array.flatten()	
-	terminal_price_array_smaller_sigma = terminal_price_array_smaller_sigma.flatten()
-	terminal_price_array_larger_sigma = terminal_price_array_larger_sigma.flatten()
-	terminal_price_array_smaller_t = terminal_price_array_smaller_t.flatten()
-	terminal_price_array_larger_t = terminal_price_array_larger_t.flatten()
-	terminal_price_array_smaller_r = terminal_price_array_smaller_r.flatten()
-	terminal_price_array_larger_r = terminal_price_array_larger_r.flatten()
-	
 	terminal_price_array_AT = terminal_price_array_AT.flatten()
-	terminal_price_array_smaller_sigma_AT = terminal_price_array_smaller_sigma_AT.flatten()
-	terminal_price_array_larger_sigma_AT = terminal_price_array_larger_sigma_AT.flatten()
-	terminal_price_array_smaller_t_AT = terminal_price_array_smaller_t_AT.flatten()
-	terminal_price_array_larger_t_AT = terminal_price_array_larger_t_AT.flatten()
-	terminal_price_array_smaller_r_AT = terminal_price_array_smaller_r_AT.flatten()
-	terminal_price_array_larger_r_AT = terminal_price_array_larger_r_AT.flatten()
-	
+
 	################### concatenate arrays #################			
 	terminal_price_array = np.concatenate( (terminal_price_array, terminal_price_array_AT) )
-	terminal_price_array_smaller_sigma = np.concatenate(( terminal_price_array_smaller_sigma, terminal_price_array_smaller_sigma_AT  ) )
-	terminal_price_array_larger_sigma = np.concatenate(( terminal_price_array_larger_sigma, terminal_price_array_larger_sigma_AT  ) )
-	terminal_price_array_smaller_t = np.concatenate(( terminal_price_array_smaller_t, terminal_price_array_smaller_t_AT  ) )
-	terminal_price_array_larger_t = np.concatenate(( terminal_price_array_larger_t, terminal_price_array_larger_t_AT  ) )
-	terminal_price_array_smaller_r = np.concatenate(( terminal_price_array_smaller_r, terminal_price_array_smaller_r_AT  ) )
-	terminal_price_array_larger_r = np.concatenate(( terminal_price_array_larger_r, terminal_price_array_larger_r_AT ) )
-
 	
 	###### CALCULATE THE OPTION PRICE ###################
 	#### calculate the option payoff for each of the terminal prices #####
@@ -524,47 +378,30 @@ def MonteCarloVanillaEuropeanPutWithGreeks(S, K, r, sigma, t, T, n_simulations=2
 	gamma_value = np.mean(gamma_array)
 	gamma_StandardError = stats.sem(gamma_array)
 
-	#### Calculate Vega = dV/dsigma (partial) ######	
-	payoff_array_smaller_sigma = np.maximum(K-terminal_price_array_smaller_sigma, 0)
-	payoff_array_larger_sigma = np.maximum(K-terminal_price_array_larger_sigma, 0)
+	#### Calculate Vega = dV/dsigma (partial) ######
+	Z_final_value_array = 1/(sigma*np.sqrt(T-t))*(np.log(terminal_price_array/S) - (r - 0.5*sigma**2)*(T-t)) #### Final Z ~ N(0,1) values needed for some of the pathwise derivatives
 	
-	option_value_array_smaller_sigma = np.exp(-r*(T-t))*payoff_array_smaller_sigma
-	option_value_array_larger_sigma = np.exp(-r*(T-t))*payoff_array_larger_sigma
-	
-	vega_array = (option_value_array_larger_sigma-option_value_array_smaller_sigma)/(2*0.01)
-	
+	Extra_smoothing = 0.1
+	vega_array = np.exp(-r*(T-t))*-Heaviside_smoothed(K-terminal_price_array, Extra_smoothing)*terminal_price_array*(-sigma*(T-t)+Z_final_value_array*np.sqrt(T-t))
 	vega_value = np.mean(vega_array)
-	
 	vega_StandardError = stats.sem(vega_array)
 	
 	#### Calculate Theta = -dV/dt (partial)  #######
-	payoff_array_smaller_t = np.maximum(K-terminal_price_array_smaller_t, 0)
-	payoff_array_larger_t = np.maximum(K-terminal_price_array_larger_t, 0)
+	Extra_smoothing = 0.1
+	theta_array = np.exp(-r*(T-t))*-Heaviside_smoothed(K-terminal_price_array, Extra_smoothing)*terminal_price_array*(-1)*( (r - 0.5*sigma**2) + 0.5*sigma*Z_final_value_array/np.sqrt(T-t) ) 
 	
-	time_step = (T-t)/n_steps
-
-	#### time increment for finite difference is 1 time step ####
-	option_value_array_smaller_t = np.exp(-r*(T-(t-time_step)))*payoff_array_smaller_t
-	option_value_array_larger_t = np.exp(-r*(T-(t+time_step)))*payoff_array_larger_t
+	theta_value_part = np.mean(theta_array)
+	theta_value = -1*(r*option_value + theta_value_part)	#### remembering I am using an overall minus sign in the definition of theta.
 	
-	theta_array = -1*(option_value_array_larger_t-option_value_array_smaller_t)/(2*time_step)
-	
-	theta_value = np.mean(theta_array)
-	
-	theta_StandardError = stats.sem(theta_array)
+	theta_StandardError = np.sqrt( r**2*option_value_StandardError**2 + stats.sem(theta_array)**2 )
 	
 	#### Calculate Rho = dV/dr (partial)   #########
-	payoff_array_smaller_r = np.maximum(K-terminal_price_array_smaller_r, 0)
-	payoff_array_larger_r = np.maximum(K-terminal_price_array_larger_r, 0)
+	Extra_smoothing = 0.1	
+	rho_array = np.exp(-r*(T-t))*(T-t)*terminal_price_array*-Heaviside_smoothed(K-terminal_price_array, Extra_smoothing)
+	rho_value_part = np.mean(rho_array)
 	
-	option_value_array_smaller_r = np.exp(-(r-1e-4)*(T-t))*payoff_array_smaller_r
-	option_value_array_larger_r = np.exp(-(r+1e-4)*(T-t))*payoff_array_larger_r	
-	
-	rho_array = (option_value_array_larger_r-option_value_array_smaller_r)/(2*1e-4)
-	
-	rho_value = np.mean(rho_array)
-	
-	rho_StandardError = stats.sem(rho_array)
+	rho_value = -(T-t)*option_value + rho_value_part
+	rho_StandardError = np.sqrt( (T-t)**2*option_value_StandardError**2 + stats.sem(rho_array)**2 )
 	
 	#### Return the option value the Greeks and standard errors of all the quantities ###
 	return(option_value, delta_value, gamma_value, vega_value, theta_value, rho_value, option_value_StandardError, delta_StandardError, gamma_StandardError, vega_StandardError, theta_StandardError, rho_StandardError)

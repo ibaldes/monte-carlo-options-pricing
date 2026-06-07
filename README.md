@@ -51,17 +51,17 @@ The scripts are:
 * AsianAntithetic.py is as the above Asian.py, but with Antithetic Variates for the Monte-Carlo.
 
 ## options_pathwise folder
-Similar to options_benchmark, but uses antithetic variates, and pathwise derivatives for evaluating the greeks Delta and Gamma.
+Similar to options_benchmark, but uses antithetic variates, and pathwise derivatives for evaluating (some of) the Greeks.
 
 The scripts are:
 
-* EuropeanVanillaPathwise.py is as the above EuropeanVanillaAntithetic.py, but with pathwise Delta and Gamma.
+* EuropeanVanillaPathwise.py is as the above EuropeanVanillaAntithetic.py, but with pathwise method for all Greeks.
 
-* BarrierPathwise.py is as the above EuropeanBarrierAntithetic.py.py, but with pathwise Delta and Gamma. 
+* BarrierPathwise.py is as the above EuropeanBarrierAntithetic.py.py, but with pathwise method for Delta and Gamma (finite difference for vega, theta, and rho). 
 
-* LookBackPathwise.py is as the above LookBackAntithetic.py, but with pathwise Delta and Gamma.
+* LookBackPathwise.py is as the above LookBackAntithetic.py, but with pathwise method for Delta and Gamma (finite difference for vega, theta, and rho).
 
-* AsianPathwise.py is as the above AsianAntithetic.py, but with pathwise Delta and Gamma.
+* AsianPathwise.py is as the above AsianAntithetic.py, but with pathwise method for Delta and Gamma (finite difference for vega, theta, and rho).
 
 
 
