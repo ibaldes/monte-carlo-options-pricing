@@ -1,6 +1,6 @@
 *****************************************************
 
-Code for Monte-Carlo pricing of options assuming the Black-Scholes model and risk-neutral probability. Comparison of prices and greeks to known analytic formulas. 
+Code for Monte-Carlo risk-neutral pricing of options assuming the Black-Scholes model. Comparison of prices and greeks to known analytic formulas. To improve estimates of the greeks, the pathwise derivative is used in the most advanced implementation. The pathwise estimates of the greeks can be compared to the finite difference approximations, with or without antithetic variates, and to the analytic results.
 
 *****************************************************
 # Libraries Used 
@@ -34,7 +34,6 @@ Contains standard scripts for calculating options pricing using analytic formula
 1. Approximate analytic pricing for Asian options with arithmetic averaging applied to the price or strike.
 2. Monte-Carlo pricing for Asian options with arithmetic averaging applied to the price or strike. These also return standard errors of the prices and greeks.
 
-
 * PricingExample.py calls the functions from EuropeanVanilla.py and EuropeanBarrier.py showing some example prices.
 
 ## options_antithetic folder
@@ -57,12 +56,11 @@ The scripts are:
 
 * EuropeanVanillaPathwise.py is as the above EuropeanVanillaAntithetic.py, but with pathwise method for all Greeks.
 
-* BarrierPathwise.py is as the above EuropeanBarrierAntithetic.py.py, but with pathwise method for Delta and Gamma (finite difference for vega, theta, and rho). 
+* BarrierPathwise.py is as the above EuropeanBarrierAntithetic.py.py, but with pathwise method for Delta, Gamma, Vega, and Rho (finite difference for Theta). 
 
-* LookBackPathwise.py is as the above LookBackAntithetic.py, but with pathwise method for Delta and Gamma (finite difference for vega, theta, and rho).
+* LookBackPathwise.py is as the above LookBackAntithetic.py, but with pathwise method for Delta, Gamma, Vega, and Rho (finite difference for Theta).
 
 * AsianPathwise.py is as the above AsianAntithetic.py, but with pathwise method for Delta and Gamma (finite difference for vega, theta, and rho).
-
 
 
 ## Nsims_scaling folder
@@ -80,5 +78,5 @@ Stores the generated plots. Contains separate folders for vanilla, barrier, look
 *****************************************************
 # Eventual Utility
 
-These scripts can eventually be used for validating methods to be applied to exotics without analytic results. They could also be used to generate training data for neural network pricing of exotics. Similarly, they can be used to validate output of PDE based approaches for exotic pricing.
+These scripts can eventually be used for validating methods to be applied to exotics without analytic results. (For example, calibrating smoothing parameters of the pathwise method, depending on stock and barrier prices). They could also be used to generate training data for neural network pricing of exotics. Similarly, they can be used to validate output of PDE based approaches for exotic pricing.
 
