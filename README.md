@@ -1,6 +1,8 @@
 *****************************************************
 
-Code for Monte-Carlo risk-neutral pricing of options assuming the Black-Scholes model. Comparison of prices and greeks to known analytic formulas. To improve estimates of the greeks, the pathwise derivative is used in the most advanced implementation. The pathwise estimates of the greeks can be compared to the finite difference approximations, with or without antithetic variates, and to the analytic results.
+Code for Monte-Carlo risk-neutral pricing of options assuming the Black-Scholes model. Comparison of prices and greeks to known analytic formulas. To improve estimates of the greeks, the pathwise derivative is used in the most advanced implementation. Pathwise estimates of the greeks are compared to the finite difference approximations, with or without antithetic variates, and to the analytic results.
+
+Note: Theta is here defined as the negative of the partial derivative of the option price with respect to time.
 
 *****************************************************
 # Libraries Used 
@@ -50,17 +52,17 @@ The scripts are:
 * AsianAntithetic.py is as the above Asian.py, but with Antithetic Variates for the Monte-Carlo.
 
 ## options_pathwise folder
-Similar to options_benchmark, but uses antithetic variates, and pathwise derivatives for evaluating (some of) the Greeks.
+Similar to options_benchmark, but uses antithetic variates, and pathwise derivatives for evaluating the Greeks (except for theta of the exotic options, which use finite difference).
 
 The scripts are:
 
-* EuropeanVanillaPathwise.py is as the above EuropeanVanillaAntithetic.py, but with pathwise method for all Greeks.
+* EuropeanVanillaPathwise.py is as the above EuropeanVanillaAntithetic.py, but with pathwise method for all the Greeks.
 
 * BarrierPathwise.py is as the above EuropeanBarrierAntithetic.py.py, but with pathwise method for Delta, Gamma, Vega, and Rho (finite difference for Theta). 
 
 * LookBackPathwise.py is as the above LookBackAntithetic.py, but with pathwise method for Delta, Gamma, Vega, and Rho (finite difference for Theta).
 
-* AsianPathwise.py is as the above AsianAntithetic.py, but with pathwise method for Delta and Gamma (finite difference for vega, theta, and rho).
+* AsianPathwise.py is as the above AsianAntithetic.py,  but with pathwise method for Delta, Gamma, Vega, and Rho (finite difference for Theta).
 
 
 ## Nsims_scaling folder

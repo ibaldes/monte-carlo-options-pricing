@@ -43,21 +43,21 @@ def main():
 
 	for i in range(0,n_examples):
 		print(f'Starting example with {int(NSim_array[i])} simulations\n')
-		Output_array[i, :] = ai.MonteCarloAvgStrikePutWithGreeks(Stockprice, interest, volatility, timenow, timeatmaturity, n_steps=100, n_simulations=NSim_array[i])
+		Output_array[i, :] = ai.MonteCarloAvgStrikePutWithGreeks(Stockprice, interest, volatility, timenow, timeatmaturity, n_steps=200, n_simulations=NSim_array[i])
 
 	print('\nPrices and Greeks using Monte-Carlo for the different n_simulations are:\n', Output_array)
 	print('\n')	
 	
 	for i in range(0,n_examples):
 		print(f'Starting example with {int(NSim_array[i])} simulations and Antithetic Variates\n')
-		Output_array_2[i, :] = aa.MonteCarloAvgStrikePutWithGreeks(Stockprice, interest, volatility, timenow, timeatmaturity, n_steps=100, n_simulations=NSim_array[i])
+		Output_array_2[i, :] = aa.MonteCarloAvgStrikePutWithGreeks(Stockprice, interest, volatility, timenow, timeatmaturity, n_steps=200, n_simulations=NSim_array[i])
 
 	print('\nPrices and Greeks using Monte-Carlo for the different n_simulations and Antithetic Variates are:\n', Output_array_2)
 	print('\n')
 	
 	for i in range(0,n_examples):
 		print(f'Starting example with {int(NSim_array[i])} simulations, Antithetic Variates, and Pathwise Method\n')
-		Output_array_3[i, :] = ap.MonteCarloAvgStrikePutWithGreeks(Stockprice, interest, volatility, timenow, timeatmaturity, n_steps=100, n_simulations=NSim_array[i])
+		Output_array_3[i, :] = ap.MonteCarloAvgStrikePutWithGreeks(Stockprice, interest, volatility, timenow, timeatmaturity, n_steps=200, n_simulations=NSim_array[i])
 
 	print('\nPrices and Greeks using Monte-Carlo for the different n_simulations, Antithetic Variates, and Pathwise Method:\n', Output_array_3)
 	print('\n')		
@@ -234,6 +234,8 @@ def main():
 	plt.fill_between(NSim_array, MonteCarloVega_array_lower, MonteCarloVega_array_upper, alpha=0.3, label=f' {CIpercentage}% CI')
 	plt.plot(NSim_array, MonteCarloVega_array_2, '-o', label=fr'Monte Carlo Vega Antithetic', c='C1')
 	plt.fill_between(NSim_array, MonteCarloVega_array_lower_2, MonteCarloVega_array_upper_2, alpha=0.3, label=f' {CIpercentage}% CI Antithetic')	
+	plt.plot(NSim_array, MonteCarloVega_array_3, '-o', label=fr'Monte Carlo Vega Antithetic + Pathwise', c='C2')
+	plt.fill_between(NSim_array, MonteCarloVega_array_lower_3, MonteCarloVega_array_upper_3, alpha=0.3, label=f' {CIpercentage}% CI Antithetic + Pathwise')	
 	plt.axhline(y=AnalyticVega, color='r', linestyle='--', label=r'Analytic Vega')
 	plt.xscale('log') 
 	plt.title(rf'Vega of Asian Avg. Strike Put Option  (S={Stockprice}, r={interest}, $\sigma$={volatility}, t={timenow}, T={timeatmaturity})')
@@ -249,7 +251,7 @@ def main():
 	plt.plot(NSim_array, MonteCarloTheta_array, '-o', label=r'Monte Carlo $\Theta$', c='C0')
 	plt.fill_between(NSim_array, MonteCarloTheta_array_lower, MonteCarloTheta_array_upper, alpha=0.3, label=f' {CIpercentage}% CI')
 	plt.plot(NSim_array, MonteCarloTheta_array_2, '-o', label=fr'Monte Carlo $\Theta$ Antithetic', c='C1')
-	plt.fill_between(NSim_array, MonteCarloTheta_array_lower_2, MonteCarloTheta_array_upper_2, alpha=0.3, label=f' {CIpercentage}% CI Antithetic')	
+	plt.fill_between(NSim_array, MonteCarloTheta_array_lower_2, MonteCarloTheta_array_upper_2, alpha=0.3, label=f' {CIpercentage}% CI Antithetic')
 	plt.axhline(y=AnalyticTheta, color='r', linestyle='--', label=r'Analytic $\Theta$')
 	plt.xscale('log') 
 	plt.title(rf'Theta of Asian Avg. Strike Put Option (S={Stockprice}, r={interest}, $\sigma$={volatility}, t={timenow}, T={timeatmaturity})')
@@ -260,12 +262,31 @@ def main():
 	plt.xlim(1e1, 1e6)
 	plt.savefig("../../plots/Asian/AsianAvgStrikePut/MonteCarloThetaConvergence_AsianAvgStrikePutOption.jpg")
 	plt.clf()
+	
+	plt.figure(figsize=(8, 6))
+	plt.plot(NSim_array, MonteCarloTheta_array, '-o', label=r'Monte Carlo $\Theta$', c='C0')
+	plt.fill_between(NSim_array, MonteCarloTheta_array_lower, MonteCarloTheta_array_upper, alpha=0.3, label=f' {CIpercentage}% CI')
+	plt.plot(NSim_array, MonteCarloTheta_array_2, '-o', label=fr'Monte Carlo $\Theta$ Antithetic', c='C1')
+	plt.fill_between(NSim_array, MonteCarloTheta_array_lower_2, MonteCarloTheta_array_upper_2, alpha=0.3, label=f' {CIpercentage}% CI Antithetic')
+	plt.axhline(y=AnalyticTheta, color='r', linestyle='--', label=r'Analytic $\Theta$')
+	plt.xscale('log') 
+	plt.title(rf'Theta of Asian Avg. Strike Put Option (S={Stockprice}, r={interest}, $\sigma$={volatility}, t={timenow}, T={timeatmaturity})')
+	plt.xlabel('Number of Simulations')
+	plt.ylabel(r'$\Theta$ [$ \$ / \mathrm{year} $]')
+	plt.legend()
+	plt.grid(True)
+	plt.xlim(1e1, 1e6)
+	plt.ylim(-10, 20)
+	plt.savefig("../../plots/Asian/AsianAvgStrikePut/MonteCarloThetaConvergence_AsianAvgStrikePutOption_ZoomedIn.jpg")
+	plt.clf()	
 
 	plt.figure(figsize=(8, 6))
 	plt.plot(NSim_array, MonteCarloRho_array, '-o', label=r'Monte Carlo $\rho$', c='C0')
 	plt.fill_between(NSim_array, MonteCarloRho_array_lower, MonteCarloRho_array_upper, alpha=0.3, label=f' {CIpercentage}% CI')
 	plt.plot(NSim_array, MonteCarloRho_array_2, '-o', label=fr'Monte Carlo $\rho$ Antithetic', c='C1')
 	plt.fill_between(NSim_array, MonteCarloRho_array_lower_2, MonteCarloRho_array_upper_2, alpha=0.3, label=f' {CIpercentage}% CI Antithetic')
+	plt.plot(NSim_array, MonteCarloRho_array_3, '-o', label=fr'Monte Carlo $\rho$ Antithetic + Pathwise', c='C2')
+	plt.fill_between(NSim_array, MonteCarloRho_array_lower_3, MonteCarloRho_array_upper_3, alpha=0.3, label=f' {CIpercentage}% CI Antithetic + Pathwise')
 	plt.axhline(y=AnalyticRho, color='r', linestyle='--', label=r'Analytic $\rho$')
 	plt.xscale('log') 
 	plt.title(rf'Rho of Asian Avg. Strike Put Option  (S={Stockprice}, r={interest}, $\sigma$={volatility}, t={timenow}, T={timeatmaturity})')

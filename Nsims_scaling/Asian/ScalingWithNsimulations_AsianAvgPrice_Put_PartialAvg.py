@@ -44,21 +44,21 @@ def main():
 
 	for i in range(0,n_examples):
 		print(f'Starting example with {int(NSim_array[i])} simulations\n')
-		Output_array[i, :] = ai.MonteCarloAvgPricePutWithGreeks(Stockprice, Strikeprice, interest, volatility, timenow, timeatmaturity, Savgsofar=Savgsofar, n_steps=100, n_simulations=NSim_array[i])
+		Output_array[i, :] = ai.MonteCarloAvgPricePutWithGreeks(Stockprice, Strikeprice, interest, volatility, timenow, timeatmaturity, Savgsofar=Savgsofar, n_steps=200, n_simulations=NSim_array[i])
 
 	print('\nPrices and Greeks using Monte-Carlo for the different n_simulations are:\n', Output_array)
 	print('\n')	
 	
 	for i in range(0,n_examples):
 		print(f'Starting example with {int(NSim_array[i])} simulations and Antithetic Variates\n')
-		Output_array_2[i, :] = aa.MonteCarloAvgPricePutWithGreeks(Stockprice, Strikeprice, interest, volatility, timenow, timeatmaturity, Savgsofar=Savgsofar, n_steps=100, n_simulations=NSim_array[i])
+		Output_array_2[i, :] = aa.MonteCarloAvgPricePutWithGreeks(Stockprice, Strikeprice, interest, volatility, timenow, timeatmaturity, Savgsofar=Savgsofar, n_steps=200, n_simulations=NSim_array[i])
 
 	print('\nPrices and Greeks using Monte-Carlo for the different n_simulations and Antithetic Variates are:\n', Output_array_2)
 	print('\n')
 	
 	for i in range(0,n_examples):
 		print(f'Starting example with {int(NSim_array[i])} simulations, Antithetic Variates, and Pathwise Method\n')
-		Output_array_3[i, :] = ap.MonteCarloAvgPricePutWithGreeks(Stockprice, Strikeprice, interest, volatility, timenow, timeatmaturity, Savgsofar=Savgsofar, n_steps=100, n_simulations=NSim_array[i])
+		Output_array_3[i, :] = ap.MonteCarloAvgPricePutWithGreeks(Stockprice, Strikeprice, interest, volatility, timenow, timeatmaturity, Savgsofar=Savgsofar, n_steps=200, n_simulations=NSim_array[i])
 
 	print('\nPrices and Greeks using Monte-Carlo for the different n_simulations, Antithetic Variates, and Pathwise Method:\n', Output_array_3)
 	print('\n')		
@@ -253,7 +253,9 @@ def main():
 	plt.plot(NSim_array, MonteCarloVega_array, '-o', label=r'Monte Carlo Vega', c='C0')
 	plt.fill_between(NSim_array, MonteCarloVega_array_lower, MonteCarloVega_array_upper, alpha=0.3, label=f' {CIpercentage}% CI')
 	plt.plot(NSim_array, MonteCarloVega_array_2, '-o', label=fr'Monte Carlo Vega Antithetic', c='C1')
-	plt.fill_between(NSim_array, MonteCarloVega_array_lower_2, MonteCarloVega_array_upper_2, alpha=0.3, label=f' {CIpercentage}% CI Antithetic')	
+	plt.fill_between(NSim_array, MonteCarloVega_array_lower_2, MonteCarloVega_array_upper_2, alpha=0.3, label=f' {CIpercentage}% CI Antithetic')
+	plt.plot(NSim_array, MonteCarloVega_array_3, '-o', label=fr'Monte Carlo Vega Antithetic + Pathwise', c='C2')
+	plt.fill_between(NSim_array, MonteCarloVega_array_lower_3, MonteCarloVega_array_upper_3, alpha=0.3, label=f' {CIpercentage}% CI Antithetic + Pathwise')	
 	plt.axhline(y=AnalyticVega, color='r', linestyle='--', label=r'Analytic Vega')
 	plt.xscale('log') 
 	plt.title(rf'Vega of Asian Avg. Price Put Option  (S={Stockprice}, K={Strikeprice}, r={interest}, $\sigma$={volatility}, t={timenow}, T={timeatmaturity}, $\bar{{S}}$={Savgsofar})')
@@ -286,6 +288,8 @@ def main():
 	plt.fill_between(NSim_array, MonteCarloRho_array_lower, MonteCarloRho_array_upper, alpha=0.3, label=f' {CIpercentage}% CI')
 	plt.plot(NSim_array, MonteCarloRho_array_2, '-o', label=fr'Monte Carlo $\rho$ Antithetic', c='C1')
 	plt.fill_between(NSim_array, MonteCarloRho_array_lower_2, MonteCarloRho_array_upper_2, alpha=0.3, label=f' {CIpercentage}% CI Antithetic')
+	plt.plot(NSim_array, MonteCarloRho_array_3, '-o', label=fr'Monte Carlo $\rho$ Antithetic + Pathwise', c='C2')
+	plt.fill_between(NSim_array, MonteCarloRho_array_lower_3, MonteCarloRho_array_upper_3, alpha=0.3, label=f' {CIpercentage}% CI Antithetic + Pathwise')
 	plt.axhline(y=AnalyticRho, color='r', linestyle='--', label=r'Analytic $\rho$')
 	plt.xscale('log') 
 	plt.title(rf'Rho of Asian Avg. Price Put Option  (S={Stockprice}, K={Strikeprice}, r={interest}, $\sigma$={volatility}, t={timenow}, T={timeatmaturity}, $\bar{{S}}$={Savgsofar})')
