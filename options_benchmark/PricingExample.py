@@ -1,10 +1,8 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import multiprocessing as mp
 from scipy import stats
 from scipy.stats import norm
-from multiprocessing import Pool
 
 import EuropeanVanilla as ev
 import EuropeanBarrier as eb
@@ -18,9 +16,6 @@ StandardBaseSeed = 0
 ##################################################################################
 
 def main():
-	print("Number of cpus : ", mp.cpu_count())
-	pool = Pool(processes=(mp.cpu_count() - 1))
-
 	print('\n')
 	print('**********************************************************************************************************************')
 	print('Call Option Prices with S=80, K=85, r=0.05, sigma=0.4, t=1, T=1.25')
